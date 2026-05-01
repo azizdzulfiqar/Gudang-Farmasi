@@ -1,0 +1,92 @@
+{
+  "entities": {
+    "Obat": {
+      "title": "Obat",
+      "description": "Master data obat-obatan",
+      "type": "object",
+      "properties": {
+        "kode": { "type": "string" },
+        "nama": { "type": "string" },
+        "satuan": { "type": "string" },
+        "kategori": { "type": "string" },
+        "stokTotal": { "type": "number" },
+        "minStok": { "type": "number" },
+        "hargaBeli": { "type": "number" },
+        "hargaJual": { "type": "number" },
+        "created_at": { "type": "number" }
+      }
+    },
+    "Supplier": {
+      "title": "Supplier",
+      "description": "Data pemasok obat",
+      "type": "object",
+      "properties": {
+        "nama": { "type": "string" },
+        "alamat": { "type": "string" },
+        "telepon": { "type": "string" }
+      }
+    },
+    "Lokasi": {
+      "title": "Lokasi",
+      "description": "Lokasi penyimpanan di gudang",
+      "type": "object",
+      "properties": {
+        "nama": { "type": "string" }
+      }
+    },
+    "SuratPesanan": {
+      "title": "Surat Pesanan",
+      "description": "Dokumen pesanan obat ke supplier",
+      "type": "object",
+      "properties": {
+        "nomor": { "type": "string" },
+        "tanggal": { "type": "string" },
+        "supplierId": { "type": "string" },
+        "supplierNama": { "type": "string" },
+        "items": { "type": "array" },
+        "status": { "type": "string" },
+        "created_at": { "type": "number" }
+      }
+    },
+    "BAPB": {
+      "title": "BAPB",
+      "description": "Berita Acara Penerimaan Barang",
+      "type": "object",
+      "properties": {
+        "nomor": { "type": "string" },
+        "tanggal": { "type": "string" },
+        "spId": { "type": "string" },
+        "nomorSP": { "type": "string" },
+        "supplierId": { "type": "string" },
+        "supplierNama": { "type": "string" },
+        "items": { "type": "array" },
+        "status": { "type": "string" },
+        "created_at": { "type": "number" }
+      }
+    },
+    "MutasiStok": {
+      "title": "Mutasi Stok",
+      "description": "Log setiap perubahan stok",
+      "type": "object",
+      "properties": {
+        "tanggal": { "type": "number" },
+        "obatId": { "type": "string" },
+        "tipe": { "type": "string" },
+        "jumlah": { "type": "number" },
+        "saldoAwal": { "type": "number" },
+        "saldoAkhir": { "type": "number" },
+        "referensiId": { "type": "string" },
+        "referensiNomor": { "type": "string" },
+        "keterangan": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/obat": { "schema": "Obat", "description": "Koleksi obat" },
+    "/supplier": { "schema": "Supplier", "description": "Koleksi supplier" },
+    "/lokasi": { "schema": "Lokasi", "description": "Koleksi lokasi" },
+    "/surat_pesanan": { "schema": "SuratPesanan", "description": "Koleksi SP" },
+    "/bapb": { "schema": "BAPB", "description": "Koleksi penerimaan barang" },
+    "/mutasi": { "schema": "MutasiStok", "description": "Koleksi log mutasi stok" }
+  }
+}

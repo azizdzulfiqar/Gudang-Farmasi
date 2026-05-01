@@ -1,0 +1,6 @@
+{
+  "name": "FarmasiEase Warehouse",
+  "description": "Sistem manajemen gudang farmasi terintegrasi dengan fitur master data, SP, BAPB, pindah lokasi, kartu stok, dan stok opname.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
