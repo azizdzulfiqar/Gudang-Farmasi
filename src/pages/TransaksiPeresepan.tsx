@@ -140,6 +140,17 @@ export default function TransaksiPeresepan() {
     kadaluarsa: ''
   });
 
+  const [availableBatches, setAvailableBatches] = React.useState<{batch: string, kadaluarsa: string}[]>([]);
+
+  React.useEffect(() => {
+    if (currentItem.obatId) {
+      const batches = dataService.getObatBatches(currentItem.obatId);
+      setAvailableBatches(batches);
+    } else {
+      setAvailableBatches([]);
+    }
+  }, [currentItem.obatId]);
+
   React.useEffect(() => {
     loadData();
     setObats(dataService.getObat());
@@ -547,12 +558,22 @@ export default function TransaksiPeresepan() {
                     </div>
                     <div className="lg:col-span-2 space-y-1.5">
                       <Label className="text-[10px] font-black text-muted-foreground uppercase px-1">ED (MM/YY)</Label>
-                      <Input 
-                        placeholder="MM/YY"
-                        className="bg-muted/10 border-0 h-11"
-                        value={currentItem.kadaluarsa} 
-                        onChange={(e) => setCurrentItem({...currentItem, kadaluarsa: e.target.value})} 
-                      />
+                      <div className="relative">
+                        <Input 
+                          placeholder="MM/YY"
+                          className="bg-muted/10 border-0 h-11"
+                          value={currentItem.kadaluarsa} 
+                          onChange={(e) => setCurrentItem({...currentItem, kadaluarsa: e.target.value})} 
+                          list="ed-suggestions"
+                        />
+                        <datalist id="ed-suggestions">
+                          {availableBatches.map((b, i) => (
+                            <option key={i} value={b.kadaluarsa}>
+                              {b.kadaluarsa} (Batch: {b.batch})
+                            </option>
+                          ))}
+                        </datalist>
+                      </div>
                     </div>
                     <div className="lg:col-span-2 flex items-end gap-2">
                       <Button 

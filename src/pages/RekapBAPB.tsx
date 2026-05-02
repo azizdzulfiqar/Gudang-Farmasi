@@ -199,10 +199,6 @@ export default function RekapBAPBPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold tracking-tight">Rekap BAPB (Penerimaan Barang)</h1>
-      </div>
-
       <div className="bg-white p-4 rounded-lg border shadow-sm space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <div className="space-y-1.5">

@@ -5,8 +5,11 @@ import {
   TrendingDown, 
   Package, 
   AlertCircle, 
-  Download
+  Download,
+  ArrowRight,
+  Brain
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,6 +21,7 @@ import { Obat, Transaksi } from '@/types';
 import { format } from 'date-fns';
 
 export default function LaporanPage() {
+  const navigate = useNavigate();
   const [obats, setObats] = React.useState<Obat[]>([]);
   const [txs, setTxs] = React.useState<Transaksi[]>([]);
 
@@ -111,6 +115,50 @@ export default function LaporanPage() {
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <AlertCircle size={12} className="text-destructive" />
               <span>Perlu pengadaan segera (SP)</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card 
+          className="bg-white border-2 rounded-2xl shadow-sm hover:border-primary/50 cursor-pointer transition-all active:scale-[0.98] group"
+          onClick={() => navigate('/rekap?type=prices')}
+        >
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div className="space-y-1">
+              <CardDescription className="uppercase text-[10px] font-black tracking-widest text-slate-400">Inventory Intelligence</CardDescription>
+              <CardTitle className="text-xl font-bold">Analisa Kenaikan Harga</CardTitle>
+            </div>
+            <div className="h-10 w-10 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform">
+               <TrendingUp size={20} />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">Monitor anomali harga beli dari supplier secara otomatis dan real-time.</p>
+            <div className="mt-4 flex items-center gap-2 text-primary font-bold text-sm">
+               Buka Intelligence Dashboard <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="bg-white border-2 rounded-2xl shadow-sm hover:border-primary/50 cursor-pointer transition-all active:scale-[0.98] group"
+          onClick={() => navigate('/rekap?type=stock_report')}
+        >
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div className="space-y-1">
+              <CardDescription className="uppercase text-[10px] font-black tracking-widest text-slate-400">Inventory Report</CardDescription>
+              <CardTitle className="text-xl font-bold">Laporan Stok Lengkap</CardTitle>
+            </div>
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+               <Package size={20} />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">Laporan ketersediaan stok fisik, valuasi aset, dan status kesehatan gudang.</p>
+            <div className="mt-4 flex items-center gap-2 text-primary font-bold text-sm">
+               Lihat Laporan Stok <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </div>
           </CardContent>
         </Card>

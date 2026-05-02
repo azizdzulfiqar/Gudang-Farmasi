@@ -29,10 +29,8 @@ import KartuStok from './pages/KartuStok';
 import PindahLokasi from './pages/PindahLokasi';
 import StokOpname from './pages/StokOpname';
 import Laporan from './pages/Laporan';
-import RekapSuratPesanan from './pages/RekapSuratPesanan';
-import RekapBAPB from './pages/RekapBAPB';
-import RekapPenjualan from './pages/RekapPenjualan';
 import LaporanPenjualan from './pages/LaporanPenjualan';
+import RekapLaporan from './pages/RekapLaporan';
 import Intelligence from './pages/Intelligence';
 import InteractionCheckPage from './pages/InteractionCheck';
 import Settings from './pages/Settings';
@@ -45,7 +43,8 @@ const Dashboard = () => {
     stokRendah: 0,
     spPending: 0,
     transaksiHariIni: 0,
-    bapbJatuhTempo: 0
+    bapbJatuhTempo: 0,
+    priceAlerts: 0
   });
 
   const [analytics, setAnalytics] = React.useState<any[]>([]);
@@ -66,12 +65,15 @@ const Dashboard = () => {
       return daysLeft <= 3 && !isPast(dueDate);
     }).length;
 
+    const trends = dataService.getPriceTrend();
+
     setStats({
       totalObat: obats.length,
       stokRendah: obats.filter((o: any) => o.stokTotal <= o.minStok).length,
       spPending: sps.filter((s: any) => s.status === 'Sent').length,
       transaksiHariIni: txs.filter(t => t.tanggal.startsWith(format(new Date(), 'yyyy-MM-dd'))).length,
-      bapbJatuhTempo: nearDue
+      bapbJatuhTempo: nearDue,
+      priceAlerts: trends.length
     });
 
     setAnalytics(dataService.getSalesAnalytics());
@@ -125,7 +127,7 @@ const Dashboard = () => {
                  <Button className="bg-primary hover:bg-primary/90 text-white rounded-xl px-6" onClick={() => navigate('/laporan')}>
                    Lihat Detail Laporan
                  </Button>
-                 <Button variant="outline" className="text-white border-white/10 hover:bg-white/5 rounded-xl px-6" onClick={() => navigate('/inventori/opname')}>
+                 <Button className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold shadow-lg" onClick={() => navigate('/inventori/opname')}>
                    Update Stok Opname
                  </Button>
                </div>
@@ -163,6 +165,26 @@ const Dashboard = () => {
             onClick={() => navigate('/logistik/bapb')}
           >
             Lihat BAPB <ArrowRight size={16} />
+          </Button>
+        </div>
+      )}
+
+      {stats.priceAlerts > 0 && (
+        <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-6 flex gap-6 items-center shadow-sm">
+          <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center text-red-600 shrink-0">
+             <TrendingUp size={24} />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-bold text-red-900 text-lg">Deteksi Kenaikan Harga</h3>
+            <p className="text-red-700 text-sm">
+              Sistem mendeteksi <span className="font-bold">{stats.priceAlerts} item obat</span> mengalami kenaikan harga beli (HNA) pada penerimaan terbaru.
+            </p>
+          </div>
+          <Button 
+            className="bg-red-600 hover:bg-red-700 text-white gap-2 shadow-lg"
+            onClick={() => navigate('/rekap?type=prices')}
+          >
+            Analisis Harga <ArrowRight size={16} />
           </Button>
         </div>
       )}
@@ -410,10 +432,8 @@ export default function App() {
           <Route path="/inventori/opname" element={<StokOpname />} />
           <Route path="/inventori/kartu" element={<KartuStok />} />
           <Route path="/laporan" element={<Laporan />} />
-          <Route path="/rekap/sp" element={<RekapSuratPesanan />} />
-          <Route path="/rekap/bapb" element={<RekapBAPB />} />
-          <Route path="/rekap/penjualan" element={<RekapPenjualan />} />
           <Route path="/laporan/penjualan" element={<LaporanPenjualan />} />
+          <Route path="/rekap" element={<RekapLaporan />} />
           <Route path="/intelligence" element={<Intelligence />} />
           <Route path="/clinical/interaction" element={<InteractionCheckPage />} />
           <Route path="/settings" element={<Settings />} />

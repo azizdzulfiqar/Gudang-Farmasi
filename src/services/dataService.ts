@@ -799,15 +799,94 @@ export const dataService = {
       alamatKlinik: 'Jln. Sehat Selalu No. 123, Yogyakarta',
       teleponKlinik: '0274-123456',
       logoKlinik: '',
-      namaPenanggungJawab: 'APT. AZIZ DZULFIQAR, S.FARM',
-      noSIPA: '19950101/SIPA_34.71/2023/2.1.1',
+      namaPenanggungJawab: 'Apt. Budi Santoso, S.Farm',
+      noSIPA: '19920101/SIPA-3471/2022/2001',
       persenPPN: 11,
-      persenMargin: 25
+      persenMargin: 20
     };
     return JSON.parse(raw);
   },
   updateSettings: (data: AppSettings) => {
     localStorage.setItem(KEYS.SETTINGS, JSON.stringify(data));
+  },
+
+  // Helper for Transaksi
+  getObatBatches: (obatId: string) => {
+    const bapbs = get<BAPB>(KEYS.BAPB);
+    const batches: { batch: string; kadaluarsa: string }[] = [];
+    
+    bapbs.forEach(b => {
+      b.items.forEach(item => {
+        if (item.obatId === obatId && item.kadaluarsa) {
+          // Check if already exists to avoid duplicates
+          if (!batches.some(bt => bt.kadaluarsa === item.kadaluarsa)) {
+            batches.push({
+              batch: item.batch,
+              kadaluarsa: item.kadaluarsa
+            });
+          }
+        }
+      });
+    });
+    
+    return batches.sort((a, b) => new Date(a.kadaluarsa).getTime() - new Date(b.kadaluarsa).getTime());
+  },
+
+  // Insights & Reports
+  getPriceHistory: (obatId: string) => {
+    const bapbs = get<BAPB>(KEYS.BAPB);
+    const history: { tanggal: string; harga: number; supplier: string; nomorBAPB: string }[] = [];
+    
+    bapbs.sort((a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime())
+      .forEach(b => {
+        const item = b.items.find(i => i.obatId === obatId);
+        if (item && item.hargaBeli) {
+          history.push({
+            tanggal: b.tanggal,
+            harga: item.hargaBeli,
+            supplier: b.supplierNama,
+            nomorBAPB: b.nomor
+          });
+        }
+      });
+    
+    return history;
+  },
+
+  getPriceTrend: () => {
+    const obats = get<Obat>(KEYS.OBAT);
+    const bapbs = get<BAPB>(KEYS.BAPB);
+    const trends: { 
+      obatId: string; 
+      nama: string; 
+      oldPrice: number; 
+      newPrice: number; 
+      percentage: number;
+      lastUpdate: string;
+      supplier: string;
+    }[] = [];
+
+    obats.forEach(obat => {
+      const history = dataService.getPriceHistory(obat.id);
+      if (history.length >= 2) {
+        const latest = history[history.length - 1];
+        const previous = history[history.length - 2];
+        
+        if (latest.harga > previous.harga) {
+          trends.push({
+            obatId: obat.id,
+            nama: obat.nama,
+            oldPrice: previous.harga,
+            newPrice: latest.harga,
+            percentage: ((latest.harga - previous.harga) / previous.harga) * 100,
+            lastUpdate: latest.tanggal,
+            supplier: latest.supplier
+          });
+        }
+      }
+    });
+
+    return trends.sort((a, b) => b.percentage - a.percentage);
   },
 
   // Seed Data (Manual)

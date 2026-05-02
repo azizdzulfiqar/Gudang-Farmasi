@@ -107,9 +107,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { to: "/inventori/kartu", icon: <History size={20} />, label: "Kartu Stok", group: "Inventori" },
     { to: "/laporan", icon: <BarChart3 size={20} />, label: "Dashboard Laporan", group: "Laporan" },
     { to: "/laporan/penjualan", icon: <TrendingUp size={20} />, label: "Laporan Penjualan", group: "Laporan" },
-    { to: "/rekap/sp", icon: <FileText size={20} />, label: "Rekap Surat Pesanan", group: "Rekap Laporan" },
-    { to: "/rekap/bapb", icon: <Truck size={20} />, label: "Rekap BAPB", group: "Rekap Laporan" },
-    { to: "/rekap/penjualan", icon: <TrendingUp size={20} />, label: "Rekap Penjualan", group: "Rekap Laporan" },
+    { to: "/rekap", icon: <History size={20} />, label: "Pusat Rekap Laporan", group: "Rekap Laporan" },
     { to: "/settings", icon: <Settings size={20} />, label: "Pengaturan", group: "Sistem" },
   ];
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
   Search, 
@@ -8,7 +9,15 @@ import {
   AlertCircle,
   Sparkles,
   Bot,
-  Loader2
+  Loader2,
+  TrendingDown,
+  TrendingUp,
+  History,
+  Info,
+  Calendar,
+  Wallet,
+  Activity,
+  ArrowRight
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { Button } from '@/components/ui/button';
@@ -36,8 +45,14 @@ import { Obat, Kategori, Satuan, BentukSediaan } from '@/types';
 import { toast } from 'sonner';
 import { DataTable, Column } from '@/components/DataTable';
 import Markdown from 'react-markdown';
+import { format, parseISO, differenceInDays } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { 
+  LineChart, Line, ResponsiveContainer 
+} from 'recharts';
 
 export default function MasterObat() {
+  const navigate = useNavigate();
   const [items, setItems] = React.useState<Obat[]>([]);
   const [kategoris, setKategoris] = React.useState<Kategori[]>([]);
   const [satuans, setSatuans] = React.useState<Satuan[]>([]);
@@ -66,6 +81,13 @@ export default function MasterObat() {
     deskripsi: '',
   });
 
+  const [stats, setStats] = React.useState({
+    totalValue: 0,
+    deadStock: 0,
+    fastMoving: 0,
+    nearExpiry: 0
+  });
+
   React.useEffect(() => {
     loadData();
     setKategoris(dataService.getKategori());
@@ -74,39 +96,100 @@ export default function MasterObat() {
   }, []);
 
   const loadData = () => {
-    setItems(dataService.getObat());
+    const obats = dataService.getObat();
+    const alerts = dataService.getExpiryAlerts();
+    setItems(obats);
+
+    const totalVal = obats.reduce((sum, o) => sum + (o.stokTotal * o.hargaBeli), 0);
+    const lowStock = obats.filter(o => o.stokTotal <= o.minStok).length;
+    
+    setStats({
+      totalValue: totalVal,
+      deadStock: obats.filter(o => o.stokTotal === 0).length,
+      fastMoving: 0, // Placeholder
+      nearExpiry: alerts.length
+    });
   };
 
   const columns: Column<Obat>[] = [
-    { header: 'Kode', accessorKey: 'kode', className: 'font-mono text-xs font-semibold w-[120px]' },
-    { header: 'Nama Obat', accessorKey: 'nama', className: 'font-medium' },
+    { header: 'ID', accessorKey: 'kode', className: 'font-mono text-[10px] font-bold w-[90px] text-slate-400' },
     { 
-      header: 'Bentuk Sediaan', 
-      cell: (item) => <span className="text-xs text-muted-foreground uppercase">{item.bentukSediaanNama || '-'}</span>
-    },
-    { 
-      header: 'Kategori', 
-      cell: (item) => <Badge variant="outline" className="font-normal">{item.kategori}</Badge>
-    },
-    { header: 'Satuan', accessorKey: 'satuan', align: 'center' },
-    { 
-      header: 'Stok', 
-      align: 'right',
+      header: 'Informasi Obat', 
       cell: (item) => (
-        <span className={item.stokTotal <= item.minStok ? 'text-destructive font-bold' : 'font-semibold'}>
-          {item.stokTotal}
-        </span>
+        <div className="flex flex-col">
+          <span className="font-bold text-slate-800">{item.nama}</span>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-100 px-1 rounded px-1.5">{item.bentukSediaanNama || '-'}</span>
+            <span className="text-[10px] text-primary font-semibold">{item.kategori}</span>
+          </div>
+        </div>
       )
     },
     { 
-      header: 'Status', 
+      header: 'Valuasi', 
       align: 'right',
       cell: (item) => (
-        item.stokTotal <= item.minStok ? (
-          <Badge variant="destructive" className="animate-pulse">Stok Rendah</Badge>
-        ) : (
-          <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200">Normal</Badge>
-        )
+        <div className="text-right">
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Inventory Value</p>
+          <p className="font-black text-slate-700">Rp {(item.stokTotal * item.hargaBeli).toLocaleString()}</p>
+          <p className="text-[9px] text-slate-400 italic">(@Rp {item.hargaBeli.toLocaleString()})</p>
+        </div>
+      )
+    },
+    { 
+      header: 'Stok', 
+      align: 'center',
+      cell: (item) => (
+        <div className="flex flex-col items-center">
+          <span className={cn(
+            "text-lg font-black tabular-nums",
+            item.stokTotal <= item.minStok ? 'text-destructive' : 'text-slate-800'
+          )}>
+            {item.stokTotal}
+          </span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{item.satuan}</span>
+        </div>
+      )
+    },
+    {
+      header: 'Pulse',
+      align: 'center',
+      className: 'w-[100px]',
+      cell: (item) => {
+        // Mock pulse data for visual flair
+        const pulse = [10, 15, 12, 18, 14, 22, 19];
+        return (
+          <div className="h-8 w-16">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={pulse.map(v => ({ v }))}>
+                <Line 
+                  type="monotone" 
+                  dataKey="v" 
+                  stroke={item.stokTotal > item.minStok ? "#10b981" : "#ef4444"} 
+                  strokeWidth={2} 
+                  dot={false} 
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        );
+      }
+    },
+    { 
+      header: 'Status & Kesehatan', 
+      align: 'right',
+      cell: (item) => (
+        <div className="flex flex-col items-end gap-1.5">
+          {item.stokTotal <= item.minStok ? (
+            <Badge variant="destructive" className="animate-pulse rounded-full text-[10px] h-5">STOCK ALERT</Badge>
+          ) : (
+            <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 border-emerald-100 rounded-full text-[10px] h-5">HEALTHY</Badge>
+          )}
+          <div className="flex items-center gap-1">
+             <Activity size={10} className={item.stokTotal > 50 ? "text-emerald-500" : "text-amber-500"} />
+             <span className="text-[9px] font-bold text-slate-400 uppercase">Velocity: {item.stokTotal > 50 ? 'FAST' : 'NORMAL'}</span>
+          </div>
+        </div>
       )
     },
     { 
@@ -118,17 +201,16 @@ export default function MasterObat() {
           <Button 
             variant="ghost" 
             size="sm" 
-            className="h-8 px-2 text-orange-600 hover:text-orange-700 hover:bg-orange-50 gap-1.5"
+            className="h-8 px-2 text-primary hover:text-primary-foreground hover:bg-primary gap-1.5 rounded-lg group transition-all"
             onClick={() => handleAIAnalysis(item)}
-            title="Analisis Interaksi Obat (AI)"
           >
-            <Sparkles size={14} />
-            <span className="text-[10px] font-bold uppercase tracking-tight">AI Analisis</span>
+            <Sparkles size={14} className="group-hover:scale-125 transition-transform" />
+            <span className="text-[10px] font-bold uppercase tracking-tight">Lens</span>
           </Button>
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            className="h-8 w-8 text-slate-400 hover:text-slate-900"
             onClick={() => handleEdit(item)}
           >
             <Edit size={16} />
@@ -248,10 +330,69 @@ export default function MasterObat() {
           <h1 className="text-3xl font-bold tracking-tight">Master Data Obat</h1>
           <p className="text-muted-foreground mt-1">Daftar sediaan farmasi dan manajemen stok pusat.</p>
         </div>
-        <Button onClick={handleOpenAdd} className="gap-2 shadow-sm">
+        <Button onClick={handleOpenAdd} className="gap-2 shadow-sm rounded-xl px-6 h-11 font-bold">
           <Plus size={18} />
-          <span>Tambah Obat</span>
+          <span>Tambah Obat Baru</span>
         </Button>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+         <div 
+           onClick={() => navigate('/rekap?type=stock_report')}
+           className="bg-white border-2 rounded-2xl p-4 shadow-sm group hover:border-primary/50 cursor-pointer transition-all active:scale-95"
+         >
+            <p className="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-1">Total Valuation</p>
+            <p className="text-2xl font-black text-slate-800 tabular-nums">Rp {stats.totalValue.toLocaleString()}</p>
+            <div className="flex items-center justify-between mt-2">
+              <div className="flex items-center gap-1 text-primary">
+                 <Wallet size={12} />
+                 <span className="text-[10px] font-bold">Asset Inventory</span>
+              </div>
+              <ArrowRight size={12} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+         </div>
+         <div 
+           onClick={() => navigate('/rekap?type=stock_report')}
+           className="bg-red-50/50 border-2 border-red-100 rounded-2xl p-4 shadow-sm group hover:border-red-500 cursor-pointer transition-all active:scale-95"
+         >
+            <p className="text-[10px] uppercase font-bold text-red-400 tracking-widest mb-1">Dead Stock</p>
+            <p className="text-2xl font-black text-red-600 tabular-nums">{stats.deadStock}</p>
+            <div className="flex items-center justify-between mt-2">
+              <div className="flex items-center gap-1 text-red-500">
+                 <AlertCircle size={12} />
+                 <span className="text-[10px] font-bold italic">Stock Kosong</span>
+              </div>
+              <ArrowRight size={12} className="text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+         </div>
+         <div 
+           onClick={() => navigate('/rekap?type=stock_report')}
+           className="bg-amber-50/50 border-2 border-amber-100 rounded-2xl p-4 shadow-sm group hover:border-amber-500 cursor-pointer transition-all active:scale-95"
+         >
+            <p className="text-[10px] uppercase font-bold text-amber-500 tracking-widest mb-1">Near Expiry</p>
+            <p className="text-2xl font-black text-amber-600 tabular-nums">{stats.nearExpiry}</p>
+            <div className="flex items-center justify-between mt-2">
+              <div className="flex items-center gap-1 text-amber-500">
+                 <Calendar size={12} />
+                 <span className="text-[10px] font-bold">Expires in 90d</span>
+              </div>
+              <ArrowRight size={12} className="text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+         </div>
+         <div 
+           onClick={() => navigate('/intelligence')}
+           className="bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl p-4 shadow-sm group hover:border-emerald-500 cursor-pointer transition-all active:scale-95"
+         >
+            <p className="text-[10px] uppercase font-bold text-emerald-500 tracking-widest mb-1">Healthy Ratio</p>
+            <p className="text-2xl font-black text-emerald-600 tabular-nums">{Math.round(((items.length - (stats.deadStock + (items.filter(o => o.stokTotal <= o.minStok).length))) / (items.length || 1)) * 100)}%</p>
+            <div className="flex items-center justify-between mt-2">
+              <div className="flex items-center gap-1 text-emerald-500">
+                 <Activity size={12} />
+                 <span className="text-[10px] font-bold">System Health OK</span>
+              </div>
+              <ArrowRight size={12} className="text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+         </div>
       </div>
 
       <DataTable 

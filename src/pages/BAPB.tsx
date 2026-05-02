@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Truck, CheckCircle, Package, Calendar as CalendarIcon, MapPin, Trash2, Eye, MoreVertical, Printer, AlertTriangle } from 'lucide-react';
+import { Plus, Truck, CheckCircle, Package, Calendar as CalendarIcon, MapPin, Trash2, Eye, MoreVertical, Printer, AlertTriangle, History } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -31,6 +31,9 @@ export default function BAPBPage() {
   const [settings, setSettings] = React.useState<AppSettings | null>(null);
   const [isAddOpen, setIsAddOpen] = React.useState(false);
   const [isDetailOpen, setIsDetailOpen] = React.useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = React.useState(false);
+  const [selectedObatHistory, setSelectedObatHistory] = React.useState<Obat | null>(null);
+  const [obatHistoryRecords, setObatHistoryRecords] = React.useState<any[]>([]);
   const [selectedBAPB, setSelectedBAPB] = React.useState<BAPB | null>(null);
   const [useSP, setUseSP] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -112,13 +115,17 @@ export default function BAPBPage() {
         setNewBAPB({
           spId: targetSP.id,
           supplierId: targetSP.supplierId,
-          items: targetSP.items.map(item => ({
-            ...item,
-            batch: '',
-            kadaluarsa: '',
-            lokasiId: allLokasis[0]?.id || '',
-            lokasiNama: allLokasis[0]?.nama || ''
-          })),
+          items: targetSP.items.map(item => {
+            const obat = allObats.find(o => o.id === item.obatId);
+            return {
+              ...item,
+              batch: '',
+              kadaluarsa: '',
+              lokasiId: allLokasis[0]?.id || '',
+              lokasiNama: allLokasis[0]?.nama || '',
+              hargaBeli: obat?.hargaBeli || 0
+            };
+          }),
           noInvoice: '',
           noFakturPajak: '',
           diskonPersen: 0,
@@ -400,6 +407,37 @@ export default function BAPBPage() {
     });
   };
 
+  const showHistory = (obatId: string) => {
+    const obat = obats.find(o => o.id === obatId);
+    if (!obat) return;
+    
+    // In a real app we'd fetch this from the server/service
+    const allBAPBs = dataService.getBAPB();
+    const history: any[] = [];
+    
+    allBAPBs.forEach(b => {
+      const item = b.items.find(i => i.obatId === obatId);
+      if (item) {
+        history.push({
+          tanggal: b.tanggal,
+          nomor: b.nomor,
+          supplier: b.supplierNama,
+          hargaBeli: item.hargaBeli,
+          jumlah: item.jumlah,
+          satuan: item.satuan,
+          batch: item.batch,
+          kadaluarsa: item.kadaluarsa
+        });
+      }
+    });
+    
+    history.sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
+    
+    setSelectedObatHistory(obat);
+    setObatHistoryRecords(history);
+    setIsHistoryOpen(true);
+  };
+
   const columns: Column<BAPB>[] = [
     { header: 'No. BAPB', accessorKey: 'nomor', className: 'font-mono font-medium' },
     { 
@@ -474,9 +512,11 @@ export default function BAPBPage() {
                 <CheckCircle size={14} className="mr-2" /> Tandai Lunas
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem onClick={() => handleEdit(item)}>
-              <CalendarIcon size={14} className="mr-2" /> Edit BAPB
-            </DropdownMenuItem>
+            {item.status !== 'Paid' && (
+              <DropdownMenuItem onClick={() => handleEdit(item)}>
+                <CalendarIcon size={14} className="mr-2" /> Edit BAPB
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={() => handlePrint(item)}>
               <Printer size={14} className="mr-2" /> Cetak BAPB
             </DropdownMenuItem>
@@ -553,7 +593,7 @@ export default function BAPBPage() {
            });
         }
       }}>
-        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editingId ? 'Edit BAPB' : 'Input Penerimaan Barang (BAPB)'}</DialogTitle></DialogHeader>
           <div className="space-y-6 py-4">
             <div className="flex gap-4 items-center p-4 bg-muted/30 rounded-lg border">
@@ -790,7 +830,17 @@ export default function BAPBPage() {
                   <TableBody>
                     {newBAPB.items.map((item, idx) => (
                       <TableRow key={idx}>
-                        <TableCell className="text-xs font-medium">{item.namaObat}</TableCell>
+                        <TableCell className="text-xs font-medium">
+                          <button 
+                            type="button"
+                            className="text-left hover:text-primary hover:underline flex items-center gap-2 group"
+                            onClick={() => showHistory(item.obatId)}
+                            title="Klik untuk lihat riwayat pembelian"
+                          >
+                            <span>{item.namaObat}</span>
+                            <History size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </button>
+                        </TableCell>
                         <TableCell>
                           <Input 
                              type="number" 
@@ -860,6 +910,74 @@ export default function BAPBPage() {
         </DialogContent>
       </Dialog>
 
+      {/* History Dialog */}
+      <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+        <DialogContent className="sm:max-w-[700px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History size={20} className="text-primary" />
+              Riwayat Pembelian: {selectedObatHistory?.nama}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="border rounded-lg overflow-hidden shadow-sm">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead>Tanggal</TableHead>
+                    <TableHead>Supplier</TableHead>
+                    <TableHead className="text-right">Harga Beli</TableHead>
+                    <TableHead className="text-right">Jumlah</TableHead>
+                    <TableHead>Batch / Exp</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {obatHistoryRecords.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground italic">
+                        Belum ada riwayat pembelian untuk item ini.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    obatHistoryRecords.map((rec, i) => (
+                      <TableRow key={i} className="hover:bg-muted/30">
+                        <TableCell className="text-xs">{format(new Date(rec.tanggal), 'dd/MM/yyyy')}</TableCell>
+                        <TableCell className="text-xs font-medium">{rec.supplier}</TableCell>
+                        <TableCell className="text-right text-xs font-bold text-primary">Rp {rec.hargaBeli?.toLocaleString()}</TableCell>
+                        <TableCell className="text-right text-xs">{rec.jumlah} {rec.satuan}</TableCell>
+                        <TableCell className="text-[10px] font-mono text-muted-foreground">
+                          {rec.batch} <br/> {rec.kadaluarsa}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="bg-primary/5 p-4 rounded-xl border border-primary/10">
+               <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-2">Statistik Singkat</p>
+               <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-[10px] text-slate-400">Harga Terakhir</p>
+                    <p className="text-lg font-black text-primary">
+                      {obatHistoryRecords[0] ? `Rp ${obatHistoryRecords[0].hargaBeli.toLocaleString()}` : '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400">Total Pengadaan</p>
+                    <p className="text-lg font-black text-slate-700">
+                      {obatHistoryRecords.reduce((sum, r) => sum + r.jumlah, 0).toLocaleString()} {selectedObatHistory?.satuan}
+                    </p>
+                  </div>
+               </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsHistoryOpen(false)}>Tutup</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Detail Dialog */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="sm:max-w-[700px]">
@@ -867,54 +985,83 @@ export default function BAPBPage() {
             <DialogTitle>Detail BAPB {selectedBAPB?.nomor}</DialogTitle>
           </DialogHeader>
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4 text-sm bg-muted/30 p-4 rounded-lg">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm bg-muted/30 p-4 rounded-lg">
               <div className="space-y-1">
-                <p className="text-muted-foreground font-medium">Informasi Umum</p>
-                <p><span className="font-semibold">Tanggal:</span> {selectedBAPB && format(new Date(selectedBAPB.tanggal), 'dd MMMM yyyy')}</p>
-                <p><span className="font-semibold">Supplier:</span> {selectedBAPB?.supplierNama}</p>
-                <p className={cn(
-                  "p-1 rounded inline-block px-2 mt-2 font-bold",
-                  selectedBAPB?.tanggalJatuhTempo && isPast(parseISO(selectedBAPB.tanggalJatuhTempo)) 
-                    ? "bg-red-50 text-red-700" 
-                    : "bg-orange-50 text-orange-700"
-                )}>
-                  <span className="font-semibold">Batas Bayar:</span> {selectedBAPB?.tanggalJatuhTempo ? format(parseISO(selectedBAPB.tanggalJatuhTempo), 'dd MMMM yyyy') : '-'}
-                </p>
+                <p className="text-[10px] uppercase font-bold text-slate-400">Informasi Dasar</p>
+                <p><span className="font-semibold text-slate-500">Tanggal:</span> {selectedBAPB && format(new Date(selectedBAPB.tanggal), 'dd MMMM yyyy')}</p>
+                <p><span className="font-semibold text-slate-500">Supplier:</span> {selectedBAPB?.supplierNama}</p>
+                <p><span className="font-semibold text-slate-500">Ref. SP:</span> {selectedBAPB?.nomorSP || '-'}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-muted-foreground font-medium">Referensi & Status</p>
-                <p><span className="font-semibold">Nomor SP:</span> {selectedBAPB?.nomorSP || '-'}</p>
-                <p><span className="font-semibold">Status:</span> 
+                <p className="text-[10px] uppercase font-bold text-slate-400">Dokumen & Pajak</p>
+                <p><span className="font-semibold text-slate-500">No. Invoice:</span> {selectedBAPB?.noInvoice || '-'}</p>
+                <p><span className="font-semibold text-slate-500">No. Faktur:</span> {selectedBAPB?.noFakturPajak || '-'}</p>
+                <p><span className="font-semibold text-slate-500">Pajak (PPN):</span> {selectedBAPB?.usePPN ? 'Berlaku' : 'Non-PPN'}</p>
+              </div>
+              <div className="space-y-1 col-span-2 md:col-span-1">
+                <p className="text-[10px] uppercase font-bold text-slate-400">Status & Jatuh Tempo</p>
+                <div className="flex items-center gap-2">
                   <span className={cn(
-                    "ml-2 px-2 py-0.5 rounded text-xs font-bold",
+                    "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter",
                     selectedBAPB?.status === 'Paid' ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"
                   )}>
-                    {selectedBAPB?.status === 'Paid' ? 'LUNAS' : 'SELESAI'}
+                    {selectedBAPB?.status === 'Paid' ? 'LUNAS' : 'BELUM DIBAYAR'}
                   </span>
-                </p>
-                {selectedBAPB?.status === 'Paid' && selectedBAPB?.paid_at && (
-                  <p><span className="font-semibold">Tgl Bayar:</span> {format(new Date(selectedBAPB.paid_at), 'dd/MM/yyyy HH:mm')}</p>
-                )}
+                  {selectedBAPB?.status === 'Paid' && selectedBAPB?.paid_at && (
+                    <span className="text-[10px] text-slate-400 italic">{format(new Date(selectedBAPB.paid_at), 'dd/MM/yy HH:mm')}</span>
+                  )}
+                </div>
+                <div className={cn(
+                  "p-1 rounded inline-block px-2 mt-2 font-bold text-xs",
+                  selectedBAPB?.status !== 'Paid' && selectedBAPB?.tanggalJatuhTempo && isPast(parseISO(selectedBAPB.tanggalJatuhTempo)) 
+                    ? "bg-red-50 text-red-700 border border-red-100" 
+                    : "bg-orange-50 text-orange-700 border border-orange-100"
+                )}>
+                  <p><span className="font-semibold">Batas Bayar:</span> {selectedBAPB?.tanggalJatuhTempo ? format(parseISO(selectedBAPB.tanggalJatuhTempo), 'dd MMMM yyyy') : '-'}</p>
+                </div>
               </div>
             </div>
 
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border rounded-xl overflow-hidden shadow-sm">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead>Nama Obat</TableHead>
-                    <TableHead className="text-center">Jumlah</TableHead>
+                  <TableRow className="bg-slate-50 border-b-2">
+                    <TableHead className="py-3">Nama Obat</TableHead>
+                    <TableHead className="text-right">Jumlah</TableHead>
+                    <TableHead className="text-right">HNA/Unit</TableHead>
                     <TableHead>Batch</TableHead>
-                    <TableHead>Exp. Date</TableHead>
+                    <TableHead>Kadaluarsa</TableHead>
+                    <TableHead className="text-right">Subtotal</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {selectedBAPB?.items.map((item, idx) => (
-                    <TableRow key={idx}>
-                      <TableCell className="font-medium">{item.namaObat}</TableCell>
-                      <TableCell className="text-center">{item.jumlah} {item.satuan}</TableCell>
-                      <TableCell className="font-mono text-xs">{item.batch}</TableCell>
-                      <TableCell>{item.kadaluarsa}</TableCell>
+                    <TableRow key={idx} className="hover:bg-slate-50/50">
+                      <TableCell className="font-medium">
+                        <button 
+                          type="button"
+                          className="text-left py-1 hover:text-primary hover:underline flex items-center gap-2 group transition-all"
+                          onClick={() => {
+                            showHistory(item.obatId);
+                          }}
+                        >
+                          <span className="leading-tight">{item.namaObat}</span>
+                          <History size={12} className="text-primary opacity-0 group-hover:opacity-100 shrink-0" />
+                        </button>
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        <span className="font-bold text-slate-700">{item.jumlah}</span> <span className="text-[10px] text-slate-400 uppercase">{item.satuan}</span>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-xs font-medium text-slate-600">
+                        Rp {(item.hargaBeli || 0).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="font-mono text-[10px] bg-slate-50/50">{item.batch}</TableCell>
+                      <TableCell className="text-xs text-slate-500 italic">
+                        {item.kadaluarsa ? format(parseISO(item.kadaluarsa), 'dd/MM/yyyy') : '-'}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums font-bold text-slate-800">
+                        Rp {(item.jumlah * (item.hargaBeli || 0)).toLocaleString()}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
