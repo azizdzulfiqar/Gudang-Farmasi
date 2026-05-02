@@ -1,9 +1,17 @@
+export interface BentukSediaan {
+  id: string;
+  nama: string;
+}
+
 export interface Obat {
   id: string;
   kode: string;
   nama: string;
   satuan: string;
   kategori: string;
+  kategoriId?: string;
+  bentukSediaanId?: string;
+  bentukSediaanNama?: string;
   stokTotal: number;
   minStok: number;
   maxStok?: number;
@@ -50,6 +58,7 @@ export interface SuratPesanan {
   tanggal: string;
   supplierId: string;
   supplierNama: string;
+  jenisSP?: string;
   items: DetilItem[];
   status: 'Draft' | 'Sent' | 'Completed';
   signature?: string;
@@ -178,4 +187,21 @@ export interface AppSettings {
   noSIPA: string;
   persenPPN: number;
   persenMargin: number;
+}
+
+export interface MappingSPKhusus {
+  id: string;
+  kategoriId: string;
+  kategoriNama: string;
+  jenisSP: string;
+  keterangan?: string;
+}
+
+export interface InteractionCheck {
+  id: string;
+  tanggal: number;
+  drugs: string[];
+  analysis: string;
+  severity: 'low' | 'medium' | 'high' | 'none';
+  checked_by?: string;
 }

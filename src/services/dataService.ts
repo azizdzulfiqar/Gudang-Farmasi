@@ -1,4 +1,4 @@
-import { Obat, Supplier, Lokasi, Kategori, Satuan, Customer, SuratPesanan, BAPB, MutasiStok, Transaksi, StokOpname, Dokter, Spesialis, AppSettings } from '@/types';
+import { Obat, Supplier, Lokasi, Kategori, Satuan, Customer, SuratPesanan, BAPB, MutasiStok, Transaksi, StokOpname, Dokter, Spesialis, AppSettings, BentukSediaan, MappingSPKhusus, InteractionCheck } from '@/types';
 import { format, parseISO, differenceInDays } from 'date-fns';
 
 // Mock Storage keys
@@ -17,8 +17,11 @@ const KEYS = {
   OPNAME: 'farmasi_opname',
   DOKTER: 'farmasi_dokter',
   SPESIALIS: 'farmasi_spesialis',
+  BENTUK_SEDIAAN: 'farmasi_bentuk_sediaan',
+  MAPPING_SP_KHUSUS: 'farmasi_mapping_sp_khusus',
   SETTINGS: 'farmasi_settings',
-  ACTIVITY: 'farmasi_activity'
+  ACTIVITY: 'farmasi_activity',
+  CLINICAL_CHECK: 'farmasi_clinical_check'
 };
 
 export interface Log {
@@ -169,6 +172,28 @@ export const dataService = {
     }
   },
 
+  // Bentuk Sediaan
+  getBentukSediaan: () => get<BentukSediaan>(KEYS.BENTUK_SEDIAAN),
+  addBentukSediaan: (data: Omit<BentukSediaan, 'id'>) => {
+    const list = get<BentukSediaan>(KEYS.BENTUK_SEDIAAN);
+    const newItem: BentukSediaan = { ...data, id: Math.random().toString(36).substr(2, 9) };
+    list.push(newItem);
+    set(KEYS.BENTUK_SEDIAAN, list);
+    return newItem;
+  },
+  updateBentukSediaan: (id: string, data: Partial<BentukSediaan>) => {
+    const list = get<BentukSediaan>(KEYS.BENTUK_SEDIAAN);
+    const index = list.findIndex(i => i.id === id);
+    if (index > -1) {
+      list[index] = { ...list[index], ...data };
+      set(KEYS.BENTUK_SEDIAAN, list);
+    }
+  },
+  deleteBentukSediaan: (id: string) => {
+    const list = get<BentukSediaan>(KEYS.BENTUK_SEDIAAN).filter(i => i.id !== id);
+    set(KEYS.BENTUK_SEDIAAN, list);
+  },
+
   // Surat Pesanan
   getSP: () => get<SuratPesanan>(KEYS.SP),
   addSP: (data: Omit<SuratPesanan, 'id'>) => {
@@ -231,6 +256,28 @@ export const dataService = {
   deleteSatuan: (id: string) => {
     const list = get<Satuan>(KEYS.SATUAN).filter(i => i.id !== id);
     set(KEYS.SATUAN, list);
+  },
+
+  // Mapping SP Khusus
+  getMappingSPKhusus: () => get<MappingSPKhusus>(KEYS.MAPPING_SP_KHUSUS),
+  addMappingSPKhusus: (data: Omit<MappingSPKhusus, 'id'>) => {
+    const list = get<MappingSPKhusus>(KEYS.MAPPING_SP_KHUSUS);
+    const newItem: MappingSPKhusus = { ...data, id: Math.random().toString(36).substr(2, 9) };
+    list.push(newItem);
+    set(KEYS.MAPPING_SP_KHUSUS, list);
+    return newItem;
+  },
+  updateMappingSPKhusus: (id: string, data: Partial<MappingSPKhusus>) => {
+    const list = get<MappingSPKhusus>(KEYS.MAPPING_SP_KHUSUS);
+    const index = list.findIndex(i => i.id === id);
+    if (index > -1) {
+      list[index] = { ...list[index], ...data };
+      set(KEYS.MAPPING_SP_KHUSUS, list);
+    }
+  },
+  deleteMappingSPKhusus: (id: string) => {
+    const list = get<MappingSPKhusus>(KEYS.MAPPING_SP_KHUSUS).filter(i => i.id !== id);
+    set(KEYS.MAPPING_SP_KHUSUS, list);
   },
 
   // BAPB (Penerimaan)
@@ -761,26 +808,222 @@ export const dataService = {
   },
   updateSettings: (data: AppSettings) => {
     localStorage.setItem(KEYS.SETTINGS, JSON.stringify(data));
+  },
+
+  // Seed Data (Manual)
+  seedMasterData: () => {
+    const customerNames = ['Budi', 'Siti', 'Agus', 'Lani', 'Iwan', 'Dewi', 'Andi', 'Rina', 'Tono', 'Linda', 'Eko', 'Sari', 'Yanto', 'Maya', 'Heri', 'Anita', 'Bambang', 'Wati', 'Dedi', 'Riska'];
+    const lastNames = ['Santoso', 'Pratama', 'Hidayat', 'Kusuma', 'Saputra', 'Wijaya', 'Putri', 'Sari', 'Utami', 'Lestari'];
+    const addresses = ['Jl. Merdeka No. ', 'Jl. Sudirman No. ', 'Jl. Gatot Subroto No. ', 'Jl. Thamrin No. ', 'Jl. Ahmad Yani No. '];
+    const cities = ['Jakarta', 'Bandung', 'Surabaya', 'Semarang', 'Yogyakarta', 'Medan', 'Makassar', 'Palembang', 'Denpasar', 'Malang'];
+
+    // Seed Customers
+    const currentCustomers = JSON.parse(localStorage.getItem(KEYS.CUSTOMER) || '[]');
+    const customersToAdd: Customer[] = [];
+    for (let i = 0; i < 50; i++) {
+        const firstName = customerNames[Math.floor(Math.random() * customerNames.length)];
+        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+        const city = cities[Math.floor(Math.random() * cities.length)];
+        const address = addresses[Math.floor(Math.random() * addresses.length)] + Math.floor(Math.random() * 100) + ', ' + city;
+        
+        customersToAdd.push({
+          id: Math.random().toString(36).substr(2, 9),
+          kode: `CUST-${(currentCustomers.length + i + 1).toString().padStart(4, '0')}`,
+          nama: `${firstName} ${lastName}`,
+          alamat: address,
+          telepon: `08${Math.floor(Math.random() * 899999999 + 100000000)}`,
+          aktif: true
+        });
+    }
+    localStorage.setItem(KEYS.CUSTOMER, JSON.stringify([...currentCustomers, ...customersToAdd]));
+
+    // Seed Suppliers
+    const supplierNames = ['Kimia Farma', 'Bio Farma', 'Kalbe Farma', 'Dexa Medica', 'Sanbe Farma', 'Phapros', 'Indofarma', 'Tempo Scan', 'Bernofarm', 'Interbat'];
+    const supplierSuffix = ['Pusat', 'Distributor', 'Cabang', 'Logistik', 'Medical', 'Pharmacy'];
+    
+    const currentSuppliers = JSON.parse(localStorage.getItem(KEYS.SUPPLIER) || '[]');
+    const suppliersToAdd: Supplier[] = [];
+    for (let i = 0; i < 50; i++) {
+        const baseName = supplierNames[Math.floor(Math.random() * supplierNames.length)];
+        const suffix = supplierSuffix[Math.floor(Math.random() * supplierSuffix.length)];
+        const city = cities[Math.floor(Math.random() * cities.length)];
+        const address = `Kawasan Industri ${city}, Blok ${String.fromCharCode(65 + Math.floor(Math.random() * 6))}${Math.floor(Math.random() * 20)}`;
+
+        suppliersToAdd.push({
+          id: Math.random().toString(36).substr(2, 9),
+          kode: `SUPP-${(currentSuppliers.length + i + 1).toString().padStart(4, '0')}`,
+          nama: `${baseName} ${suffix} ${i + 1}`,
+          alamat: address,
+          telepon: `02${Math.floor(Math.random() * 79 + 10)}-${Math.floor(Math.random() * 8999999 + 1000000)}`
+        });
+    }
+    localStorage.setItem(KEYS.SUPPLIER, JSON.stringify([...currentSuppliers, ...suppliersToAdd]));
+    
+    dataService.addLog('Menjalankan Seeding Data Master (50 Customer, 50 Supplier)', 'System');
+  },
+
+  deduplicateMasterData: () => {
+    // Deduplicate Customers
+    const customers: Customer[] = dataService.getCustomers();
+    const uniqueCustomers: Customer[] = [];
+    const seenCustomerNames = new Set();
+
+    customers.forEach(c => {
+      if (!seenCustomerNames.has(c.nama.toLowerCase())) {
+        seenCustomerNames.add(c.nama.toLowerCase());
+        uniqueCustomers.push(c);
+      }
+    });
+
+    if (uniqueCustomers.length !== customers.length) {
+      localStorage.setItem(KEYS.CUSTOMER, JSON.stringify(uniqueCustomers));
+    }
+
+    // Deduplicate Suppliers
+    const suppliers: Supplier[] = dataService.getSuppliers();
+    const uniqueSuppliers: Supplier[] = [];
+    const seenSupplierNames = new Set();
+
+    suppliers.forEach(s => {
+      if (!seenSupplierNames.has(s.nama.toLowerCase())) {
+        seenSupplierNames.add(s.nama.toLowerCase());
+        uniqueSuppliers.push(s);
+      }
+    });
+
+    if (uniqueSuppliers.length !== suppliers.length) {
+      localStorage.setItem(KEYS.SUPPLIER, JSON.stringify(uniqueSuppliers));
+    }
+
+    dataService.addLog('Pembersihan data duplikat Master selesai', 'System');
+  },
+
+  // Clinical Interaction Checks
+  getInteractionChecks: () => get<InteractionCheck>(KEYS.CLINICAL_CHECK),
+  addInteractionCheck: (data: Omit<InteractionCheck, 'id' | 'tanggal'>) => {
+    const list = get<InteractionCheck>(KEYS.CLINICAL_CHECK);
+    const newItem: InteractionCheck = { 
+      ...data, 
+      id: Math.random().toString(36).substr(2, 9),
+      tanggal: Date.now()
+    };
+    list.unshift(newItem); // Newest first
+    set(KEYS.CLINICAL_CHECK, list);
+    dataService.addLog('Menyimpan riwayat cek interaksi AI', 'Clinical');
+    return newItem;
+  },
+  deleteInteractionCheck: (id: string) => {
+    const list = get<InteractionCheck>(KEYS.CLINICAL_CHECK).filter(i => i.id !== id);
+    set(KEYS.CLINICAL_CHECK, list);
+  },
+  updateInteractionCheck: (id: string, updates: Partial<InteractionCheck>) => {
+    const list = get<InteractionCheck>(KEYS.CLINICAL_CHECK);
+    const index = list.findIndex(i => i.id === id);
+    if (index !== -1) {
+      list[index] = { ...list[index], ...updates };
+      set(KEYS.CLINICAL_CHECK, list);
+      return list[index];
+    }
+    return null;
   }
 };
 
 // Initial Data Seed if empty
+// Auto-patch missing categories
+const existingKats = dataService.getKategori();
+['NARKOTIKA', 'OBAT OBAT TERTENTU', 'PREKURSOR'].forEach(cat => {
+  if (!existingKats.some(k => k.nama === cat)) {
+    dataService.addKategori({ nama: cat });
+  }
+});
+
+// Auto-patch missing sample drugs for special categories
+const currentObat = dataService.getObat();
+if (currentObat.length > 0) {
+  const specialDrugs = [
+    { kode: 'OB-101', nama: 'Codein 10mg', satuan: 'TABLET', kategori: 'NARKOTIKA', stokTotal: 20, minStok: 5, hargaBeli: 5000, hargaJual: 10000, deskripsi: 'Antitusif Narkotika' },
+    { kode: 'OB-102', nama: 'Fentanyl Inj 0.05mg/ml', satuan: 'INJEKSI', kategori: 'NARKOTIKA', stokTotal: 10, minStok: 2, hargaBeli: 50000, hargaJual: 75000, deskripsi: 'Analgetik kuat Narkotika' },
+    { kode: 'OB-103', nama: 'Tramadol 50mg', satuan: 'KAPSUL', kategori: 'OBAT OBAT TERTENTU', stokTotal: 50, minStok: 10, hargaBeli: 2000, hargaJual: 4000, deskripsi: 'Analgetik OOT' },
+    { kode: 'OB-104', nama: 'Trihexyphenidyl 2mg (THP)', satuan: 'TABLET', kategori: 'OBAT OBAT TERTENTU', stokTotal: 100, minStok: 20, hargaBeli: 500, hargaJual: 1500, deskripsi: 'OOT Anti-Parkinson' },
+    { kode: 'OB-105', nama: 'Pseudoephedrine HCl 30mg', satuan: 'TABLET', kategori: 'PREKURSOR', stokTotal: 80, minStok: 20, hargaBeli: 1200, hargaJual: 2500, deskripsi: 'Dekongestan Prekursor' },
+    { kode: 'OB-106', nama: 'Ephedrine HCl 25mg', satuan: 'TABLET', kategori: 'PREKURSOR', stokTotal: 50, minStok: 10, hargaBeli: 1500, hargaJual: 3000, deskripsi: 'Bronkodilator Prekursor' }
+  ];
+  
+  let addedAny = false;
+  const bss = dataService.getBentukSediaan();
+  
+  specialDrugs.forEach(sd => {
+    if (!currentObat.some(o => o.kode === sd.kode)) {
+       let bsFound = bss.find(b => b.nama === sd.satuan);
+       if (!bsFound && sd.satuan === 'INJEKSI') bsFound = bss.find(b => b.nama === 'INJEKSI');
+       
+       dataService.addObat({
+         ...sd,
+         bentukSediaanId: bsFound?.id,
+         bentukSediaanNama: bsFound?.nama,
+         created_at: Date.now()
+       });
+       addedAny = true;
+    }
+  });
+}
+
+// Auto-patch missing dosage form or category IDs
+const existingDrugs = dataService.getObat();
+const needsPatch = existingDrugs.some(o => !o.bentukSediaanId || !o.kategoriId);
+if (needsPatch) {
+  const bss = dataService.getBentukSediaan();
+  const kats = dataService.getKategori();
+  const patchedDrugs = existingDrugs.map(item => {
+    let bsId = item.bentukSediaanId;
+    let bsNama = item.bentukSediaanNama;
+    let katId = item.kategoriId;
+
+    if (!bsId) {
+      let bsFound = bss.find(b => b.nama === item.satuan);
+      if (!bsFound) {
+        if (item.nama.toUpperCase().includes('SALEP') || item.nama.toUpperCase().includes(' CR ')) bsFound = bss.find(b => b.nama === 'SALEP');
+        if (item.nama.toUpperCase().includes('INFUS')) bsFound = bss.find(b => b.nama === 'INFUS');
+        if (item.nama.toUpperCase().includes('TETES MATA')) bsFound = bss.find(b => b.nama === 'TETES MATA');
+      }
+      bsId = bsFound?.id;
+      bsNama = bsFound?.nama;
+    }
+
+    if (!katId) {
+      const katFound = kats.find(k => k.nama === item.kategori);
+      katId = katFound?.id;
+    }
+    
+    return {
+      ...item,
+      bentukSediaanId: bsId,
+      bentukSediaanNama: bsNama,
+      kategoriId: katId
+    };
+  });
+  localStorage.setItem(KEYS.OBAT, JSON.stringify(patchedDrugs));
+}
+
 if (dataService.getLokasi().length === 0) {
   dataService.addLokasi({ kode: 'LOC-001', nama: 'GUDANG UTAMA - RAK A' });
   dataService.addLokasi({ kode: 'LOC-002', nama: 'GUDANG UTAMA - RAK B' });
 }
 if (dataService.getKategori().length === 0) {
-  ['OBAT BEBAS', 'OBAT KERAS', 'OBAT PSIKOTROPIKA', 'ALAT KESEHATAN', 'SUPLEMEN'].forEach(nama => dataService.addKategori({ nama }));
+  ['OBAT BEBAS', 'OBAT KERAS', 'OBAT PSIKOTROPIKA', 'NARKOTIKA', 'OBAT OBAT TERTENTU', 'PREKURSOR', 'ALAT KESEHATAN', 'SUPLEMEN'].forEach(nama => dataService.addKategori({ nama }));
 }
 if (dataService.getSatuan().length === 0) {
   ['TABLET', 'KAPSUL', 'SIRUP', 'AMPULE', 'VIAL', 'PCS', 'BOX'].forEach(nama => dataService.addSatuan({ nama }));
 }
-if (dataService.getCustomers().length === 0) {
-  dataService.addCustomer({ kode: 'CUST-001', nama: 'AZIZ DZULFIQAR', alamat: 'Gamping, Yogyakarta', telepon: '08123456789', aktif: true });
+if (dataService.getBentukSediaan().length === 0) {
+  ['TABLET', 'TABLET KUNYAH', 'KAPSUL', 'KAPLET', 'SIRUP', 'SUSPENSI', 'INJEKSI', 'INFUS', 'SALEP', 'KRIM', 'TETES MATA'].forEach(nama => dataService.addBentukSediaan({ nama }));
 }
-if (dataService.getSuppliers().length === 0) {
-  dataService.addSupplier({ kode: 'SPL-001', nama: 'PT Kimia Farma', alamat: 'Jakarta', telepon: '021-123456' });
+if (dataService.getCustomers().length <= 1) {
+  dataService.seedMasterData();
 }
+
+// Ensure duplicates are cleaned up on startup
+dataService.deduplicateMasterData();
 if (dataService.getDokter().length === 0) {
   dataService.addDokter({ kode: 'DR-001', nama: 'DR. RUDY, SP.A', spesialisasi: 'SPESIALIS ANAK', telepon: '0812-9876-5432' });
   dataService.addDokter({ kode: 'DR-002', nama: 'DR. SANTI, SP.PD', spesialisasi: 'PENYAKIT DALAM', telepon: '0813-1122-3344' });
@@ -893,12 +1136,35 @@ if (dataService.getObat().length === 0) {
     { kode: 'OB-097', nama: 'Meclizine 25mg', satuan: 'TABLET', kategori: 'OBAT BEBAS TERBATAS', stokTotal: 100, minStok: 20, hargaBeli: 1000, hargaJual: 2000, deskripsi: 'Obat vertigo/mabuk' },
     { kode: 'OB-098', nama: 'Guaifenesin 200mg', satuan: 'TABLET', kategori: 'OBAT BEBAS TERBATAS', stokTotal: 150, minStok: 40, hargaBeli: 500, hargaJual: 1100, deskripsi: 'Ekspektoran batuk berdahak' },
     { kode: 'OB-099', nama: 'Dextromethorphan HBr', satuan: 'SIRUP', kategori: 'OBAT BEBAS TERBATAS', stokTotal: 40, minStok: 10, hargaBeli: 12000, hargaJual: 18000, deskripsi: 'Penekan batuk kering' },
-    { kode: 'OB-100', nama: 'Chlorpheniramine (CTM)', satuan: 'TABLET', kategori: 'OBAT BEBAS TERBATAS', stokTotal: 500, minStok: 100, hargaBeli: 100, hargaJual: 300, deskripsi: 'Antialergi klasik' }
+    { kode: 'OB-100', nama: 'Chlorpheniramine (CTM)', satuan: 'TABLET', kategori: 'OBAT BEBAS TERBATAS', stokTotal: 500, minStok: 100, hargaBeli: 100, hargaJual: 300, deskripsi: 'Antialergi klasik' },
+    { kode: 'OB-101', nama: 'Codein 10mg', satuan: 'TABLET', kategori: 'NARKOTIKA', stokTotal: 20, minStok: 5, hargaBeli: 5000, hargaJual: 10000, deskripsi: 'Antitusif Narkotika' },
+    { kode: 'OB-102', nama: 'Fentanyl Inj 0.05mg/ml', satuan: 'INJEKSI', kategori: 'NARKOTIKA', stokTotal: 10, minStok: 2, hargaBeli: 50000, hargaJual: 75000, deskripsi: 'Analgetik kuat Narkotika' },
+    { kode: 'OB-103', nama: 'Tramadol 50mg', satuan: 'KAPSUL', kategori: 'OBAT OBAT TERTENTU', stokTotal: 50, minStok: 10, hargaBeli: 2000, hargaJual: 4000, deskripsi: 'Analgetik OOT' },
+    { kode: 'OB-104', nama: 'Trihexyphenidyl 2mg (THP)', satuan: 'TABLET', kategori: 'OBAT OBAT TERTENTU', stokTotal: 100, minStok: 20, hargaBeli: 500, hargaJual: 1500, deskripsi: 'OOT Anti-Parkinson' },
+    { kode: 'OB-105', nama: 'Pseudoephedrine HCl 30mg', satuan: 'TABLET', kategori: 'PREKURSOR', stokTotal: 80, minStok: 20, hargaBeli: 1200, hargaJual: 2500, deskripsi: 'Dekongestan Prekursor' },
+    { kode: 'OB-106', nama: 'Ephedrine HCl 25mg', satuan: 'TABLET', kategori: 'PREKURSOR', stokTotal: 50, minStok: 10, hargaBeli: 1500, hargaJual: 3000, deskripsi: 'Bronkodilator Prekursor' }
   ];
 
   medicineData.forEach(item => {
+    // Get available masters to match
+    const bss = dataService.getBentukSediaan();
+    const kats = dataService.getKategori();
+
+    let bsFound = bss.find(b => b.nama === item.satuan);
+    const katFound = kats.find(k => k.nama === item.kategori);
+    
+    // Some manual matching for specific items
+    if (!bsFound) {
+      if (item.nama.toUpperCase().includes('SALEP') || item.nama.toUpperCase().includes(' CR ')) bsFound = bss.find(b => b.nama === 'SALEP');
+      if (item.nama.toUpperCase().includes('INFUS')) bsFound = bss.find(b => b.nama === 'INFUS');
+      if (item.nama.toUpperCase().includes('TETES MATA')) bsFound = bss.find(b => b.nama === 'TETES MATA');
+    }
+
     const obat = dataService.addObat({
       ...item,
+      bentukSediaanId: bsFound?.id,
+      bentukSediaanNama: bsFound?.nama,
+      kategoriId: katFound?.id,
       created_at: Date.now()
     });
 
@@ -915,4 +1181,17 @@ if (dataService.getObat().length === 0) {
       keterangan: 'Stock Awal Sistem'
     });
   });
+}
+
+if (dataService.getMappingSPKhusus().length === 0) {
+  const kats = dataService.getKategori();
+  const narko = kats.find(k => k.nama === 'NARKOTIKA');
+  const psiko = kats.find(k => k.nama === 'OBAT PSIKOTROPIKA');
+  const prekursor = kats.find(k => k.nama === 'PREKURSOR');
+  const oot = kats.find(k => k.nama === 'OBAT OBAT TERTENTU');
+
+  if (narko) dataService.addMappingSPKhusus({ kategoriId: narko.id, kategoriNama: narko.nama, jenisSP: 'NARKOTIKA' });
+  if (psiko) dataService.addMappingSPKhusus({ kategoriId: psiko.id, kategoriNama: psiko.nama, jenisSP: 'PSIKOTROPIKA' });
+  if (prekursor) dataService.addMappingSPKhusus({ kategoriId: prekursor.id, kategoriNama: prekursor.nama, jenisSP: 'PREKURSOR' });
+  if (oot) dataService.addMappingSPKhusus({ kategoriId: oot.id, kategoriNama: oot.nama, jenisSP: 'OBAT OBAT TERTENTU' });
 }

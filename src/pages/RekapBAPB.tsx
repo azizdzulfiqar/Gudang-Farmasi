@@ -14,6 +14,7 @@ import { dataService } from '@/services/dataService';
 import { BAPB, Obat, Supplier, Lokasi } from '@/types';
 import { format } from 'date-fns';
 import { pdfService } from '@/services/pdfService';
+import { exportService } from '@/services/exportService';
 import { DataTable, Column } from '@/components/DataTable';
 import { cn } from '@/lib/utils';
 
@@ -174,6 +175,28 @@ export default function RekapBAPBPage() {
     pdfService.generateTablePDF('Rekap Penerimaan Barang (BAPB)', headers, body, footer);
   };
 
+  const handleExportCSV = () => {
+    const headers = ['No', 'Tanggal', 'Batas Bayar', 'Supplier', 'No BAPB', 'No Invoice', 'Status', 'HNA', 'Diskon', 'HPP', 'Total'];
+    const rows = filteredBAPBs.map((item, idx) => {
+      const hna = item.items.reduce((sum, i) => sum + (i.jumlah * (i.hargaBeli || 0)), 0);
+      const hpp = hna - (item.diskonTotal || 0);
+      return [
+        idx + 1,
+        format(new Date(item.tanggal), 'yyyy-MM-dd'),
+        item.tanggalJatuhTempo ? format(new Date(item.tanggalJatuhTempo), 'yyyy-MM-dd') : '-',
+        item.supplierNama,
+        item.nomor,
+        item.noInvoice || '-',
+        item.status,
+        hna,
+        item.diskonTotal || 0,
+        hpp,
+        item.jumlahDibayar || 0
+      ];
+    });
+    exportService.exportToCSV('Rekap_BAPB', headers, rows);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -274,9 +297,24 @@ export default function RekapBAPBPage() {
             <Button onClick={loadData} className="h-9 px-6 bg-blue-600 hover:bg-blue-700 text-white gap-2">
               {isLoading ? <Loader2 className="animate-spin" size={16} /> : null} Lihat
             </Button>
-            <Button onClick={handleExport} className="h-9 px-6 bg-green-600 hover:bg-green-700 text-white gap-2">
-              <Download size={16} /> Export
-            </Button>
+            <div className="flex bg-slate-100 p-1 rounded-md border border-slate-200">
+              <Button 
+                onClick={handleExport} 
+                variant="ghost" 
+                size="sm" 
+                className="h-7 px-2 text-[10px] font-bold hover:bg-white hover:text-primary transition-all"
+              >
+                PDF
+              </Button>
+              <Button 
+                onClick={handleExportCSV} 
+                variant="ghost" 
+                size="sm" 
+                className="h-7 px-2 text-[10px] font-bold hover:bg-white hover:text-primary transition-all"
+              >
+                CSV
+              </Button>
+            </div>
           </div>
         </div>
       </div>

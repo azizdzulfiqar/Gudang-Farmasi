@@ -16,11 +16,14 @@ import MasterSupplier from './pages/MasterSupplier';
 import MasterLokasi from './pages/MasterLokasi';
 import MasterKategori from './pages/MasterKategori';
 import MasterSatuan from './pages/MasterSatuan';
+import MasterBentukSediaan from './pages/MasterBentukSediaan';
+import MasterMappingSPKhusus from './pages/MasterMappingSPKhusus';
 import MasterCustomer from './pages/MasterCustomer';
 import MasterDokter from './pages/MasterDokter';
 import MasterSpesialis from './pages/MasterSpesialis';
 import TransaksiPeresepan from './pages/TransaksiPeresepan';
 import SuratPesanan from './pages/SuratPesanan';
+import SuratPesananKhususPage from './pages/SuratPesananKhusus';
 import BAPB from './pages/BAPB';
 import KartuStok from './pages/KartuStok';
 import PindahLokasi from './pages/PindahLokasi';
@@ -29,7 +32,9 @@ import Laporan from './pages/Laporan';
 import RekapSuratPesanan from './pages/RekapSuratPesanan';
 import RekapBAPB from './pages/RekapBAPB';
 import RekapPenjualan from './pages/RekapPenjualan';
+import LaporanPenjualan from './pages/LaporanPenjualan';
 import Intelligence from './pages/Intelligence';
+import InteractionCheckPage from './pages/InteractionCheck';
 import Settings from './pages/Settings';
 
 // Dashboard component
@@ -392,10 +397,13 @@ export default function App() {
           <Route path="/master/lokasi" element={<MasterLokasi />} />
           <Route path="/master/kategori" element={<MasterKategori />} />
           <Route path="/master/satuan" element={<MasterSatuan />} />
+          <Route path="/master/bentuk-sediaan" element={<MasterBentukSediaan />} />
+          <Route path="/master/mapping-sp-khusus" element={<MasterMappingSPKhusus />} />
           <Route path="/master/customer" element={<MasterCustomer />} />
           <Route path="/master/dokter" element={<MasterDokter />} />
           <Route path="/master/spesialis" element={<MasterSpesialis />} />
           <Route path="/logistik/sp" element={<SuratPesanan />} />
+          <Route path="/logistik/sp-khusus/:type" element={<SuratPesananKhususPage />} />
           <Route path="/logistik/bapb" element={<BAPB />} />
           <Route path="/penjualan/peresepan" element={<TransaksiPeresepan />} />
           <Route path="/inventori/pindah" element={<PindahLokasi />} />
@@ -405,7 +413,9 @@ export default function App() {
           <Route path="/rekap/sp" element={<RekapSuratPesanan />} />
           <Route path="/rekap/bapb" element={<RekapBAPB />} />
           <Route path="/rekap/penjualan" element={<RekapPenjualan />} />
+          <Route path="/laporan/penjualan" element={<LaporanPenjualan />} />
           <Route path="/intelligence" element={<Intelligence />} />
+          <Route path="/clinical/interaction" element={<InteractionCheckPage />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </Layout>

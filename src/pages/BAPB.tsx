@@ -35,6 +35,7 @@ export default function BAPBPage() {
   const [useSP, setUseSP] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [lastItemCount, setLastItemCount] = React.useState(0);
 
   const [tempItem, setTempItem] = React.useState({
     obatId: '',
@@ -153,6 +154,20 @@ export default function BAPBPage() {
       }
     }
   }, [hnaTotal, calculatedDiscount, settings, isAddOpen, newBAPB.usePPN]);
+
+  // Auto-focus first empty batch field when items are added
+  React.useEffect(() => {
+    if (isAddOpen && newBAPB.items.length > lastItemCount) {
+      const firstEmptyBatchIdx = newBAPB.items.findIndex((item, idx) => !item.batch);
+      if (firstEmptyBatchIdx !== -1) {
+        setTimeout(() => {
+          const el = document.getElementById(`batch-input-${firstEmptyBatchIdx}`);
+          if (el) el.focus();
+        }, 300); // Wait for animations/transitions
+      }
+    }
+    setLastItemCount(newBAPB.items.length);
+  }, [newBAPB.items.length, isAddOpen, lastItemCount]);
 
   const loadData = () => {
     setIsLoading(true);
@@ -522,6 +537,7 @@ export default function BAPBPage() {
         setIsAddOpen(open);
         if (!open) {
           setEditingId(null);
+          setLastItemCount(0);
           setNewBAPB({ 
              supplierId: '', 
              items: [], 
@@ -793,6 +809,7 @@ export default function BAPBPage() {
                         </TableCell>
                         <TableCell>
                           <Input 
+                            id={`batch-input-${idx}`}
                             placeholder="Batch *" 
                             className={cn("h-8", !item.batch && "border-destructive/50 bg-destructive/5")} 
                             value={item.batch}

@@ -12,6 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { dataService } from '@/services/dataService';
+import { pdfService } from '@/services/pdfService';
+import { exportService } from '@/services/exportService';
 import { Obat, Transaksi } from '@/types';
 import { format } from 'date-fns';
 
@@ -27,6 +29,33 @@ export default function LaporanPage() {
   const totalInvValue = obats.reduce((sum, o) => sum + (o.stokTotal * o.hargaBeli), 0);
   const totalSales = txs.reduce((sum, t) => sum + (t.total || 0), 0);
 
+  const handleExportPDF = () => {
+    const headers = ['Kode', 'Nama Sediaan', 'Satuan', 'Stok Fisik', 'Harga Beli', 'Total Nilai'];
+    const body = obats.map(o => [
+      o.kode,
+      o.nama,
+      o.satuan,
+      o.stokTotal,
+      `Rp ${o.hargaBeli.toLocaleString()}`,
+      `Rp ${(o.stokTotal * o.hargaBeli).toLocaleString()}`
+    ]);
+    const footer = ['', '', '', '', 'VALUASI STOK', `Rp ${totalInvValue.toLocaleString()}`];
+    pdfService.generateTablePDF('Laporan Valuasi Inventori', headers, body, footer);
+  };
+
+  const handleExportCSV = () => {
+    const headers = ['Kode', 'Nama Sediaan', 'Satuan', 'Stok Fisik', 'Harga Beli', 'Total Nilai'];
+    const rows = obats.map(o => [
+      o.kode,
+      o.nama,
+      o.satuan,
+      o.stokTotal,
+      o.hargaBeli,
+      o.stokTotal * o.hargaBeli
+    ]);
+    exportService.exportToCSV('Laporan_Inventori', headers, rows);
+  };
+
   return (
     <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-700">
       <div className="flex justify-between items-center">
@@ -34,9 +63,14 @@ export default function LaporanPage() {
           <h1 className="text-3xl font-bold tracking-tight">Laporan Strategis</h1>
           <p className="text-muted-foreground mt-1">Analisa performa inventori dan pergerakan obat.</p>
         </div>
-        <Button variant="outline" className="gap-2">
-          <Download size={18} /> Ekspor PDF/Excel
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" className="gap-2 border-slate-200" onClick={handleExportPDF}>
+            <Download size={18} /> PDF
+          </Button>
+          <Button variant="outline" className="gap-2 border-slate-200" onClick={handleExportCSV}>
+            <Download size={18} /> CSV
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">

@@ -9,6 +9,7 @@ import { dataService } from '@/services/dataService';
 import { SuratPesanan, Supplier } from '@/types';
 import { format } from 'date-fns';
 import { pdfService } from '@/services/pdfService';
+import { exportService } from '@/services/exportService';
 import { DataTable, Column } from '@/components/DataTable';
 
 export default function RekapSuratPesananPage() {
@@ -65,6 +66,19 @@ export default function RekapSuratPesananPage() {
     pdfService.generateTablePDF('Rekap Surat Pesanan (SP)', headers, body);
   };
 
+  const handleExportCSV = () => {
+    const headers = ['No', 'Tanggal', 'Nomor SP', 'Distributor', 'Jumlah Item', 'Status'];
+    const rows = filteredSPs.map((item, idx) => [
+      idx + 1,
+      format(new Date(item.tanggal), 'yyyy-MM-dd'),
+      item.nomor,
+      item.supplierNama,
+      item.items.length,
+      item.status
+    ]);
+    exportService.exportToCSV('Rekap_Surat_Pesanan', headers, rows);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -98,9 +112,24 @@ export default function RekapSuratPesananPage() {
             <Button onClick={loadData} className="h-9 px-6 bg-blue-600 hover:bg-blue-700 text-white gap-2">
               {isLoading ? <Loader2 className="animate-spin" size={16} /> : null} Lihat
             </Button>
-            <Button onClick={handleExport} className="h-9 px-6 bg-green-600 hover:bg-green-700 text-white gap-2">
-              <Download size={16} /> Export
-            </Button>
+            <div className="flex bg-slate-100 p-1 rounded-md border border-slate-200">
+              <Button 
+                onClick={handleExport} 
+                variant="ghost" 
+                size="sm" 
+                className="h-7 px-2 text-[10px] font-bold hover:bg-white hover:text-primary transition-all"
+              >
+                PDF
+              </Button>
+              <Button 
+                onClick={handleExportCSV} 
+                variant="ghost" 
+                size="sm" 
+                className="h-7 px-2 text-[10px] font-bold hover:bg-white hover:text-primary transition-all"
+              >
+                CSV
+              </Button>
+            </div>
           </div>
         </div>
       </div>

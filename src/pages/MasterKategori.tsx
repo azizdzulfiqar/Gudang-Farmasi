@@ -90,7 +90,7 @@ export default function MasterKategori() {
         </Button>
       </div>
 
-      <div className="max-w-2xl">
+      <div>
         <DataTable 
           data={items} 
           columns={columns} 

@@ -75,5 +75,19 @@ export const aiService = {
       }
       return "Maaf, saya tidak dapat menjawab pertanyaan Anda saat ini.";
     }
+  },
+
+  testConnection: async () => {
+    try {
+      const ai = getAI();
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: "Hello, this is a connection test. Please respond with 'OK'.",
+      });
+      return response.text.toLowerCase().includes('ok') || !!response.text;
+    } catch (error) {
+      console.error('Gemini Connection Test Error:', error);
+      throw error;
+    }
   }
 };

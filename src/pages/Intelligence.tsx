@@ -387,7 +387,7 @@ export default function IntelligencePage() {
             <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
               <Brain size={200} />
             </div>
-            <div className="relative z-10 max-w-2xl">
+            <div className="relative z-10 max-w-4xl">
               <Badge className="mb-4 bg-primary text-white hover:bg-primary/90 rounded-lg px-3">AI SMART ADVICE</Badge>
               <h2 className="text-3xl font-black tracking-tight mb-4 leading-tight">Optimalkan Stok Anda dengan Data, Bukan Tebakan.</h2>
               <p className="text-slate-600 leading-relaxed mb-8">
@@ -398,8 +398,12 @@ export default function IntelligencePage() {
                  <Button 
                    className="rounded-2xl px-8 h-12 font-bold shadow-lg shadow-primary/20"
                    onClick={() => {
-                     const assistantButton = document.querySelector('button[size="lg"].rounded-full.bg-primary') as HTMLButtonElement;
-                     if (assistantButton) assistantButton.click();
+                     window.dispatchEvent(new CustomEvent('farmasi-ai-command', { 
+                       detail: { 
+                         text: `Berdasarkan dashboard Business Intelligence hari ini, berikan analisis mendalam terkait item fast moving ${topProducts[0]?.nama || ''} dan strategi optimasi stok untuk periode mendatang.`,
+                         autoSend: true 
+                       } 
+                     }));
                    }}
                  >
                    Minta Rekomendasi Lanjutan

@@ -93,7 +93,7 @@ export default function MasterLokasi() {
         </Button>
       </div>
 
-      <div className="max-w-2xl">
+      <div>
         <DataTable 
           data={items} 
           columns={columns} 

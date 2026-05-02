@@ -13,10 +13,12 @@ import {
   Menu,
   X,
   Package,
+  Brain,
   Users,
   MapPin,
   Tag,
   Layers,
+  Link as LinkIcon,
   ChevronDown,
   ChevronRight,
   Stethoscope,
@@ -25,6 +27,8 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/sonner';
+import { dataService } from '@/services/dataService';
+import { MappingSPKhusus } from '@/types';
 import AIAssistant from './AIAssistant';
 import CommandPalette from './CommandPalette';
 import NotificationCenter from './NotificationCenter';
@@ -63,23 +67,35 @@ const NavGroup = ({ label }: { label: string }) => (
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
   const [masterDataOpen, setMasterDataOpen] = React.useState(false);
+  const [spKhususOpen, setSpKhususOpen] = React.useState(false);
+  const [mappings, setMappings] = React.useState<MappingSPKhusus[]>([]);
   const location = useLocation();
+
+  React.useEffect(() => {
+    setMappings(dataService.getMappingSPKhusus());
+  }, []);
 
   // Auto-expand Master Data if current path is a master page
   React.useEffect(() => {
     if (location.pathname.startsWith('/master/')) {
       setMasterDataOpen(true);
     }
+    if (location.pathname.startsWith('/logistik/sp-khusus/')) {
+      setSpKhususOpen(true);
+    }
   }, [location.pathname]);
 
   const menuItems = [
     { to: "/", icon: <LayoutDashboard size={20} />, label: "Dashboard", group: "Main" },
     { to: "/intelligence", icon: <TrendingUp size={20} />, label: "Intelligence", group: "Main" },
+    { to: "/clinical/interaction", icon: <Brain size={20} />, label: "Interaksi Obat AI", group: "Main" },
     { to: "/master/obat", icon: <Package size={20} />, label: "Data Obat", group: "Master Data" },
     { to: "/master/supplier", icon: <Users size={20} />, label: "Supplier", group: "Master Data" },
     { to: "/master/lokasi", icon: <MapPin size={20} />, label: "Lokasi", group: "Master Data" },
     { to: "/master/kategori", icon: <Tag size={20} />, label: "Kategori", group: "Master Data" },
     { to: "/master/satuan", icon: <Layers size={20} />, label: "Satuan", group: "Master Data" },
+    { to: "/master/bentuk-sediaan", icon: <Layers size={20} />, label: "Bentuk Sediaan", group: "Master Data" },
+    { to: "/master/mapping-sp-khusus", icon: <LinkIcon size={20} />, label: "Mapping SP Khusus", group: "Master Data" },
     { to: "/master/customer", icon: <Users size={20} />, label: "Pelanggan", group: "Master Data" },
     { to: "/master/dokter", icon: <Stethoscope size={20} />, label: "Dokter", group: "Master Data" },
     { to: "/master/spesialis", icon: <Tag size={20} />, label: "Spesialis Dokter", group: "Master Data" },
@@ -90,6 +106,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { to: "/inventori/opname", icon: <ClipboardCheck size={20} />, label: "Stok Opname", group: "Inventori" },
     { to: "/inventori/kartu", icon: <History size={20} />, label: "Kartu Stok", group: "Inventori" },
     { to: "/laporan", icon: <BarChart3 size={20} />, label: "Dashboard Laporan", group: "Laporan" },
+    { to: "/laporan/penjualan", icon: <TrendingUp size={20} />, label: "Laporan Penjualan", group: "Laporan" },
     { to: "/rekap/sp", icon: <FileText size={20} />, label: "Rekap Surat Pesanan", group: "Rekap Laporan" },
     { to: "/rekap/bapb", icon: <Truck size={20} />, label: "Rekap BAPB", group: "Rekap Laporan" },
     { to: "/rekap/penjualan", icon: <TrendingUp size={20} />, label: "Rekap Penjualan", group: "Rekap Laporan" },
@@ -100,11 +117,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background flex">
+      {/* Sidebar Backdrop (Mobile only) */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside 
         className={cn(
           "bg-card border-r transition-all duration-300 flex flex-col fixed inset-y-0 z-50 overflow-hidden",
-          sidebarOpen ? "w-64" : "w-0 md:w-20"
+          sidebarOpen ? "w-64 translate-x-0" : "-translate-x-full md:translate-x-0 w-0 md:w-20"
         )}
       >
         <div className="p-6 border-bottom flex items-center gap-3">
@@ -119,13 +144,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             const isMasterData = group === "Master Data";
             
             if (isMasterData) {
+              const itemsInGroup = menuItems.filter(item => item.group === group);
+              const isGroupActive = itemsInGroup.some(item => location.pathname === item.to);
+
               return (
                 <div key={group} className="space-y-1">
                   {sidebarOpen && (
                     <Button
                       variant="ghost"
                       onClick={() => setMasterDataOpen(!masterDataOpen)}
-                      className="w-full justify-between items-center px-3 py-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground mt-4"
+                      className={cn(
+                        "w-full justify-between items-center px-3 py-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground mt-4",
+                        isGroupActive && "text-primary bg-primary/5"
+                      )}
                     >
                       <div className="flex items-center gap-3">
                         <Database size={20} />
@@ -134,14 +165,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       {masterDataOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     </Button>
                   )}
-                  {(masterDataOpen || !sidebarOpen) && menuItems
-                    .filter(item => item.group === group)
+                  {(masterDataOpen || !sidebarOpen) && itemsInGroup
                     .map(item => (
                       <div key={item.to}>
                         <SidebarItem 
                           to={item.to}
                           icon={item.icon}
-                          active={location.pathname === item.to}
+                          active={location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to + '/'))}
                           label={sidebarOpen ? item.label : ""}
                           className={sidebarOpen ? "pl-9" : ""}
                         />
@@ -156,16 +186,60 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 {sidebarOpen && <NavGroup label={group} />}
                 {menuItems
                   .filter(item => item.group === group)
-                  .map(item => (
-                    <div key={item.to}>
-                      <SidebarItem 
-                        to={item.to}
-                        icon={item.icon}
-                        active={location.pathname === item.to}
-                        label={sidebarOpen ? item.label : ""}
-                      />
-                    </div>
-                  ))}
+                  .map(item => {
+                    // Special case for Surat Pesanan Khusus Dropdown
+                    if (item.to === '/logistik/sp' && group === 'Logistik' && mappings.length > 0) {
+                      return (
+                        <div key="sp-khusus-group" className="space-y-1">
+                          <SidebarItem 
+                            to={item.to}
+                            icon={item.icon}
+                            active={location.pathname === item.to}
+                            label={sidebarOpen ? item.label : ""}
+                          />
+                          
+                          {sidebarOpen && (
+                            <Button
+                              variant="ghost"
+                              onClick={() => setSpKhususOpen(!spKhususOpen)}
+                              className={cn(
+                                "w-full justify-between items-center px-3 py-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground ml-0",
+                                location.pathname.startsWith('/logistik/sp-khusus/') && "text-primary bg-primary/5"
+                              )}
+                            >
+                              <div className="flex items-center gap-3">
+                                <FileText size={20} />
+                                <span className={cn("text-sm", !sidebarOpen && "hidden")}>SP Khusus</span>
+                              </div>
+                              {spKhususOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            </Button>
+                          )}
+                          
+                          {spKhususOpen && sidebarOpen && mappings.map(m => (
+                            <SidebarItem 
+                              key={m.id}
+                              to={`/logistik/sp-khusus/${m.jenisSP}`}
+                              icon={<div className="w-1.5 h-1.5 rounded-full bg-slate-400 ml-1.5" />}
+                              active={location.pathname === `/logistik/sp-khusus/${m.jenisSP}`}
+                              label={m.jenisSP}
+                              className="pl-9 h-8 text-xs font-normal"
+                            />
+                          ))}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={item.to}>
+                        <SidebarItem 
+                          to={item.to}
+                          icon={item.icon}
+                          active={location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to + '/'))}
+                          label={sidebarOpen ? item.label : ""}
+                        />
+                      </div>
+                    );
+                  })}
               </div>
             );
           })}
@@ -187,7 +261,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Main Content */}
       <main className={cn(
         "flex-1 flex flex-col transition-all duration-300 min-w-0",
-        sidebarOpen ? "ml-64" : "ml-0 md:ml-20"
+        sidebarOpen ? "md:ml-64" : "ml-0 md:ml-20"
       )}>
         {/* Header */}
         <header className="h-16 border-b bg-card/50 backdrop-blur-md sticky top-0 z-40 px-6 flex items-center justify-between">
@@ -211,7 +285,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Content Area */}
-        <div className="p-6 max-w-7xl mx-auto w-full">
+        <div className="p-6 w-full">
           {children}
         </div>
       </main>

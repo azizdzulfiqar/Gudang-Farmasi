@@ -32,7 +32,7 @@ import {
 import { SearchableSelect } from '@/components/SearchableSelect';
 import { dataService } from '@/services/dataService';
 import { aiService } from '@/services/aiService';
-import { Obat, Kategori, Satuan } from '@/types';
+import { Obat, Kategori, Satuan, BentukSediaan } from '@/types';
 import { toast } from 'sonner';
 import { DataTable, Column } from '@/components/DataTable';
 import Markdown from 'react-markdown';
@@ -41,6 +41,7 @@ export default function MasterObat() {
   const [items, setItems] = React.useState<Obat[]>([]);
   const [kategoris, setKategoris] = React.useState<Kategori[]>([]);
   const [satuans, setSatuans] = React.useState<Satuan[]>([]);
+  const [bentukSediaans, setBentukSediaans] = React.useState<BentukSediaan[]>([]);
   const [settings, setSettings] = React.useState(dataService.getSettings());
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
@@ -55,6 +56,9 @@ export default function MasterObat() {
     nama: '',
     satuan: '',
     kategori: '',
+    kategoriId: '',
+    bentukSediaanId: '',
+    bentukSediaanNama: '',
     stokTotal: 0,
     minStok: 10,
     hargaBeli: 0,
@@ -66,6 +70,7 @@ export default function MasterObat() {
     loadData();
     setKategoris(dataService.getKategori());
     setSatuans(dataService.getSatuan());
+    setBentukSediaans(dataService.getBentukSediaan());
   }, []);
 
   const loadData = () => {
@@ -75,6 +80,10 @@ export default function MasterObat() {
   const columns: Column<Obat>[] = [
     { header: 'Kode', accessorKey: 'kode', className: 'font-mono text-xs font-semibold w-[120px]' },
     { header: 'Nama Obat', accessorKey: 'nama', className: 'font-medium' },
+    { 
+      header: 'Bentuk Sediaan', 
+      cell: (item) => <span className="text-xs text-muted-foreground uppercase">{item.bentukSediaanNama || '-'}</span>
+    },
     { 
       header: 'Kategori', 
       cell: (item) => <Badge variant="outline" className="font-normal">{item.kategori}</Badge>
@@ -151,6 +160,9 @@ export default function MasterObat() {
       nama: '',
       satuan: '',
       kategori: '',
+      kategoriId: '',
+      bentukSediaanId: '',
+      bentukSediaanNama: '',
       stokTotal: 0,
       minStok: 10,
       hargaBeli: 0,
@@ -174,6 +186,9 @@ export default function MasterObat() {
       nama: item.nama,
       satuan: item.satuan,
       kategori: item.kategori,
+      kategoriId: item.kategoriId || '',
+      bentukSediaanId: item.bentukSediaanId || '',
+      bentukSediaanNama: item.bentukSediaanNama || '',
       stokTotal: item.stokTotal,
       minStok: item.minStok,
       hargaBeli: item.hargaBeli,
@@ -277,8 +292,12 @@ export default function MasterObat() {
                   <p className="text-sm font-semibold text-slate-600">{selectedObat.kategori}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">Bentuk Sediaan</p>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">Satuan</p>
                   <p className="text-sm font-semibold text-slate-600">{selectedObat.satuan}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">Bentuk Sediaan</p>
+                  <p className="text-sm font-semibold text-slate-600">{selectedObat.bentukSediaanNama || '-'}</p>
                 </div>
               </div>
             )}
@@ -361,17 +380,44 @@ export default function MasterObat() {
                   value={formData.satuan}
                   onValueChange={(v) => setFormData({...formData, satuan: v})}
                   placeholder="Pilih Satuan"
-                  className="w-full md:min-w-[180px]"
+                  className="w-full"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="kategori">Kategori</Label>
                 <SearchableSelect 
-                  options={kategoris.map(k => ({ value: k.nama, label: k.nama }))}
-                  value={formData.kategori}
-                  onValueChange={(v) => setFormData({...formData, kategori: v})}
+                  options={kategoris.map(k => ({ value: k.id, label: k.nama }))}
+                  value={formData.kategoriId}
+                  onValueChange={(v) => {
+                    const found = kategoris.find(k => k.id === v);
+                    setFormData({...formData, kategoriId: v, kategori: found?.nama || ''});
+                  }}
                   placeholder="Pilih Kategori"
-                  className="w-full md:min-w-[180px]"
+                  className="w-full"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bentukSediaan">Bentuk Sediaan</Label>
+                <SearchableSelect 
+                  options={bentukSediaans.map(b => ({ value: b.id, label: b.nama }))}
+                  value={formData.bentukSediaanId}
+                  onValueChange={(v) => {
+                    const found = bentukSediaans.find(b => b.id === v);
+                    setFormData({...formData, bentukSediaanId: v, bentukSediaanNama: found?.nama || ''});
+                  }}
+                  placeholder="Pilih Bentuk Sediaan"
+                  className="w-full"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="minStok">Minimum Stok</Label>
+                <Input 
+                  id="minStok" 
+                  type="number"
+                  value={formData.minStok}
+                  onChange={(e) => setFormData({...formData, minStok: Number(e.target.value)})}
                 />
               </div>
             </div>
@@ -392,17 +438,6 @@ export default function MasterObat() {
                   type="number"
                   value={formData.hargaJual}
                   onChange={(e) => setFormData({...formData, hargaJual: Number(e.target.value)})}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="minStok">Minimum Stok</Label>
-                <Input 
-                  id="minStok" 
-                  type="number"
-                  value={formData.minStok}
-                  onChange={(e) => setFormData({...formData, minStok: Number(e.target.value)})}
                 />
               </div>
             </div>

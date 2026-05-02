@@ -18,16 +18,35 @@ export default function AIAssistant() {
   const scrollRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
+    const handleCustomAICommand = (e: any) => {
+      const { text, autoSend } = e.detail;
+      setIsOpen(true);
+      setIsMinimized(false);
+      setInput(text || '');
+      
+      if (autoSend) {
+        setTimeout(() => {
+          handleSend(text);
+        }, 100);
+      }
+    };
+
+    window.addEventListener('farmasi-ai-command', handleCustomAICommand as any);
+    return () => window.removeEventListener('farmasi-ai-command', handleCustomAICommand as any);
+  }, []);
+
+  React.useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isLoading]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const handleSend = async (overrideText?: string) => {
+    const textToSend = overrideText || input;
+    if (!textToSend.trim() || isLoading) return;
 
-    const userMsg = input.trim();
-    setInput('');
+    const userMsg = textToSend.trim();
+    if (!overrideText) setInput('');
     setMessages(prev => [...prev, { text: userMsg, isBot: false }]);
     setIsLoading(true);
 

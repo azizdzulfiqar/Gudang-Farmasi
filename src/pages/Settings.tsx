@@ -1,16 +1,19 @@
 import React from 'react';
 import { dataService } from '@/services/dataService';
+import { exportService } from '@/services/exportService';
+import { aiService } from '@/services/aiService';
 import { AppSettings } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Save, Building2, UserCog, Percent, Image as ImageIcon, Download, Upload, Trash2, Database } from 'lucide-react';
+import { Save, Building2, UserCog, Percent, Image as ImageIcon, Download, Upload, Trash2, Database, Loader2, Sparkles } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 export default function Settings() {
   const [settings, setSettings] = React.useState<AppSettings>(dataService.getSettings());
+  const [isTestingAI, setIsTestingAI] = React.useState(false);
 
   const handleSave = () => {
     dataService.updateSettings(settings);
@@ -20,15 +23,7 @@ export default function Settings() {
 
   const handleExport = () => {
     const data = dataService.exportData();
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `farmasi_backup_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    exportService.exportToJSON(`farmasi_backup_${new Date().toISOString().split('T')[0]}`, JSON.parse(data));
     toast.success('Backup data berhasil diunduh');
   };
 
@@ -95,8 +90,33 @@ export default function Settings() {
     }
   };
 
+  const handleTestAI = async () => {
+    setIsTestingAI(true);
+    try {
+      const result = await aiService.testConnection();
+      if (result) {
+        Swal.fire({
+          title: 'Koneksi Berhasil!',
+          text: 'AI Gemini siap digunakan untuk fitur cerdas FarmasiEase.',
+          icon: 'success',
+          confirmButtonColor: '#2563eb'
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      Swal.fire({
+        title: 'Koneksi Gagal',
+        text: 'Pastikan GEMINI_API_KEY2 sudah terpasang di Secrets AI Studio dan memiliki akses internet.',
+        icon: 'error',
+        confirmButtonColor: '#ef4444'
+      });
+    } finally {
+      setIsTestingAI(false);
+    }
+  };
+
   return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-10" id="settings-page">
+    <div className="space-y-6 pb-10" id="settings-page">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Pengaturan Aplikasi</h1>
@@ -276,10 +296,45 @@ export default function Settings() {
               <Label htmlFor="import-file" className="text-xs font-bold text-slate-500 uppercase">Pilih File Backup</Label>
               <Input id="import-file" type="file" accept=".json" onChange={handleImport} className="cursor-pointer" />
             </div>
-            <div className="pt-4 border-t border-dashed">
-              <Button variant="outline" className="w-full text-destructive border-destructive/20 hover:bg-red-50 hover:text-destructive transition-all gap-2 text-xs font-bold uppercase tracking-wider" onClick={handleClearData}>
-                <Trash2 size={16} /> Reset Seluruh Sistem (Danger)
+            <div className="pt-4 flex flex-col gap-3">
+              <Button 
+                variant="outline" 
+                className="w-full text-primary border-primary/20 hover:bg-primary/5 transition-all gap-2 text-xs font-black uppercase tracking-widest"
+                onClick={() => {
+                  Swal.fire({
+                    title: 'Seed Data Master?',
+                    text: 'Ini akan menambahkan 50 Customer dan 50 Supplier acak ke dalam sistem.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, Jalankan',
+                    cancelButtonText: 'Batal',
+                    confirmButtonColor: '#2563eb'
+                  }).then((result) => {
+                    if (result.isConfirmed) {
+                      dataService.seedMasterData();
+                      dataService.deduplicateMasterData();
+                      toast.success('50 Customer & 50 Supplier berhasil ditambahkan!');
+                    }
+                  });
+                }}
+              >
+                <Sparkles size={16} /> Seed 50 Cust & 50 Supp (Random)
               </Button>
+              <Button 
+                variant="outline" 
+                className="w-full text-amber-600 border-amber-200 hover:bg-amber-50 gap-2 text-xs font-bold uppercase tracking-wider"
+                onClick={() => {
+                  dataService.deduplicateMasterData();
+                  toast.success('Pembersihan data duplikat selesai');
+                }}
+              >
+                Bersihkan Data Duplikat
+              </Button>
+              <div className="border-t border-dashed pt-3">
+                <Button variant="outline" className="w-full text-destructive border-destructive/20 hover:bg-red-50 hover:text-destructive transition-all gap-2 text-xs font-bold uppercase tracking-wider" onClick={handleClearData}>
+                  <Trash2 size={16} /> Reset Seluruh Sistem (Danger)
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -322,8 +377,21 @@ export default function Settings() {
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 italic text-sm text-slate-500">
                "Gemini melayani fitur Smart Dashboard, Smart Reorder, dan Analisis Klinis Obat secara otomatis."
             </div>
-            <Button variant="outline" className="w-full gap-2 border-primary/20 text-primary font-bold">
-               Cek Koneksi Gemini API
+            <Button 
+              variant="outline" 
+              className="w-full gap-2 border-primary/20 text-primary font-bold hover:bg-primary/5 transition-all"
+              onClick={handleTestAI}
+              disabled={isTestingAI}
+            >
+              {isTestingAI ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" /> Menguji Koneksi...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={18} /> Cek Koneksi Gemini API
+                </>
+              )}
             </Button>
           </CardContent>
         </Card>

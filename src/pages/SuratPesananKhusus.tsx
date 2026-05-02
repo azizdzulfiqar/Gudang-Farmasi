@@ -1,43 +1,44 @@
 import React from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Plus, FileText, Send, Trash2, MoreVertical, Printer, Eye, Truck, Sparkles } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import { dataService } from '@/services/dataService';
+import { SuratPesanan, MappingSPKhusus, BAPB, Supplier, Obat, DetilItem } from '@/types';
+import { DataTable, Column } from '@/components/DataTable';
+import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
+import { toast } from 'sonner';
+import { pdfService } from '@/services/pdfService';
+import Swal from 'sweetalert2';
+import { cn } from '@/lib/utils';
 import { 
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SearchableSelect } from '@/components/SearchableSelect';
-import { dataService } from '@/services/dataService';
-import { SuratPesanan, Supplier, Obat, DetilItem, BAPB, MappingSPKhusus } from '@/types';
-import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { pdfService } from '@/services/pdfService';
-import Swal from 'sweetalert2';
-import { DataTable, Column } from '@/components/DataTable';
-import { cn } from '@/lib/utils';
 
-export default function SuratPesananPage() {
+export default function SuratPesananKhususPage() {
+  const { type } = useParams<{ type: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
+  
   const [items, setItems] = React.useState<SuratPesanan[]>([]);
   const [bapbs, setBapbs] = React.useState<BAPB[]>([]);
   const [suppliers, setSuppliers] = React.useState<Supplier[]>([]);
   const [obats, setObats] = React.useState<Obat[]>([]);
   const [mappings, setMappings] = React.useState<MappingSPKhusus[]>([]);
+  const [mapping, setMapping] = React.useState<MappingSPKhusus | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [isDetailOpen, setIsDetailOpen] = React.useState(false);
   const [isAddOpen, setIsAddOpen] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
-  const [isDetailOpen, setIsDetailOpen] = React.useState(false);
   const [selectedSP, setSelectedSP] = React.useState<SuratPesanan | null>(null);
-  const [isLoading, setIsLoading] = React.useState(false);
-  
+
   const [newSP, setNewSP] = React.useState<{
     supplierId: string;
     items: DetilItem[];
@@ -45,43 +46,32 @@ export default function SuratPesananPage() {
   }>({
     supplierId: '',
     items: [],
-    jenisSP: ''
+    jenisSP: type || ''
   });
 
   const [tempItem, setTempItem] = React.useState({ obatId: '', jumlah: 0 });
 
   React.useEffect(() => {
+    const allMappings = dataService.getMappingSPKhusus();
+    setMappings(allMappings);
+    const found = allMappings.find(m => m.jenisSP === type);
+    
+    setMapping(found || null);
     loadData();
+    setBapbs(dataService.getBAPB());
     setSuppliers(dataService.getSuppliers());
     setObats(dataService.getObat());
-    setMappings(dataService.getMappingSPKhusus());
-
-    // If navigated with state (e.g. from SP Khusus page)
-    if (location.state?.editId) {
-      const allSP = dataService.getSP();
-      const itemToEdit = allSP.find(sp => sp.id === location.state.editId);
-      if (itemToEdit) {
-        setEditingId(itemToEdit.id);
-        setNewSP({
-          supplierId: itemToEdit.supplierId,
-          items: [...itemToEdit.items],
-          jenisSP: itemToEdit.jenisSP || ''
-        });
-        setIsAddOpen(true);
-      }
-    } else if (location.state?.defaultType) {
-      setNewSP(prev => ({ ...prev, jenisSP: location.state.defaultType }));
-      setIsAddOpen(true);
+    
+    if (type) {
+      setNewSP(prev => ({ ...prev, jenisSP: type }));
     }
-  }, [location.state]);
+  }, [type]);
 
   const loadData = () => {
     setIsLoading(true);
     setTimeout(() => {
-      const allItems = dataService.getSP();
-      // Only show regular SP (jenisSP is null, empty or not matching special types)
-      setItems(allItems.filter(sp => !sp.jenisSP));
-      setBapbs(dataService.getBAPB());
+      const allSP = dataService.getSP();
+      setItems(allSP.filter(sp => sp.jenisSP === type));
       setIsLoading(false);
     }, 500);
   };
@@ -92,7 +82,6 @@ export default function SuratPesananPage() {
   };
 
   const handleDelete = (id: string) => {
-    // Check if this SP is already linked to a BAPB
     const linkedBAPB = bapbs.find(b => b.spId === id);
     if (linkedBAPB) {
       toast.error('SP tidak dapat dihapus karena sudah memiliki data penerimaan (BAPB)');
@@ -111,18 +100,13 @@ export default function SuratPesananPage() {
     }).then((result) => {
       if (result.isConfirmed) {
         dataService.deleteSP(id);
-        Swal.fire(
-          'Dihapus!',
-          'Surat Pesanan berhasil dihapus.',
-          'success'
-        );
+        Swal.fire('Dihapus!', 'Surat Pesanan berhasil dihapus.', 'success');
         loadData();
       }
     });
   };
 
   const handleCreateBAPB = (item: SuratPesanan) => {
-    // In a real app, we might pass state to navigate
     toast.success(`Mengarahkan ke BAPB untuk SP ${item.nomor}...`);
     navigate('/logistik/bapb', { state: { spId: item.id } });
   };
@@ -133,17 +117,15 @@ export default function SuratPesananPage() {
   };
 
   const handleEdit = (item: SuratPesanan) => {
-    // Cannot edit if already has BAPB
     if (bapbs.find(b => b.spId === item.id)) {
       toast.error('SP tidak dapat diedit karena sudah memiliki data penerimaan (BAPB)');
       return;
     }
-
     setEditingId(item.id);
     setNewSP({
       supplierId: item.supplierId,
       items: [...item.items],
-      jenisSP: item.jenisSP || ''
+      jenisSP: item.jenisSP || type || ''
     });
     setIsAddOpen(true);
   };
@@ -206,51 +188,11 @@ export default function SuratPesananPage() {
     setIsAddOpen(false);
     setEditingId(null);
     loadData();
-    setNewSP({ supplierId: '', items: [], jenisSP: '' });
+    setNewSP({ supplierId: '', items: [], jenisSP: type || '' });
   };
 
-  const handleGenerateSuggestions = () => {
-    const suggestions = dataService.getReorderSuggestions();
-    if (suggestions.length === 0) {
-      toast.info('Seluruh stok obat masih dalam batas aman (di atas minimal).');
-      return;
-    }
-
-    Swal.fire({
-      title: 'Smart Reorder AI',
-      text: `Ditemukan ${suggestions.length} item obat dengan stok kritis. Buat draft Surat Pesanan otomatis?`,
-      icon: 'info',
-      showCancelButton: true,
-      confirmButtonText: 'Ya, Buat SP',
-      cancelButtonText: 'Batal',
-      confirmButtonColor: '#2563eb'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        const itemsToOrder = suggestions.map(s => ({
-          obatId: s.id,
-          namaObat: s.nama,
-          jumlah: s.saranOrder,
-          satuan: obats.find(o => o.id === s.id)?.satuan || '',
-          keterangan: 'Auto-suggestion (Low Stock)'
-        }));
-        
-        setNewSP(prev => ({ ...prev, items: itemsToOrder }));
-        setIsAddOpen(true);
-        toast.success(`${suggestions.length} item stok rendah telah ditambahkan ke draft.`);
-      }
-    });
-  };
-
-  const specialCategoryIds = mappings.map(m => m.kategoriId);
   const filteredObats = obats.filter(o => {
-    if (newSP.jenisSP) {
-      // Special SP: find the specific category for this type
-      const currentMapping = mappings.find(m => m.jenisSP === newSP.jenisSP);
-      return o.kategoriId === currentMapping?.kategoriId;
-    } else {
-      // Regular SP: exclude all special categories
-      return !specialCategoryIds.includes(o.kategoriId || '');
-    }
+    return o.kategoriId === mapping?.kategoriId;
   });
 
   const columns: Column<SuratPesanan>[] = [
@@ -259,28 +201,24 @@ export default function SuratPesananPage() {
       cell: (item) => (
         <div className="flex flex-col">
           <span className="font-mono font-medium">{item.nomor}</span>
-          {item.jenisSP ? (
-            <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded w-fit mt-1">
-              {item.jenisSP}
-            </span>
-          ) : (
-            <span className="text-[9px] font-bold text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded w-fit mt-1">
-              REGULER
-            </span>
-          )}
+          <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded w-fit mt-1 uppercase">
+            {item.jenisSP}
+          </span>
         </div>
       )
     },
     { 
       header: 'Tanggal', 
-      cell: (item) => format(new Date(item.tanggal), 'dd/MM/yyyy') 
+      cell: (item) => format(new Date(item.tanggal), 'dd/MM/yyyy')
     },
-    { header: 'Supplier', accessorKey: 'supplierNama' },
+    { 
+      header: 'Supplier', 
+      accessorKey: 'supplierNama'
+    },
     { 
       header: 'Jumlah Item', 
-      accessorKey: 'items', 
       align: 'center',
-      cell: (item) => item.items.length 
+      cell: (item) => item.items.length
     },
     { 
       header: 'Status', 
@@ -342,33 +280,40 @@ export default function SuratPesananPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Surat Pesanan</h1>
-          <p className="text-muted-foreground mt-1">Kelola dokumen pengadaan barang ke supplier.</p>
+          <div className="flex items-center gap-2 mb-1">
+            <Badge variant="secondary">{type}</Badge>
+            <h1 className="text-3xl font-bold tracking-tight">Surat Pesanan {type}</h1>
+          </div>
+          <p className="text-muted-foreground">
+            {mapping ? `Mapping Kategori: ${mapping.kategoriNama}` : 'Kelola Surat Pesanan Khusus.'}
+          </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2 border-primary/20 hover:bg-primary/5 text-primary font-bold shadow-sm" onClick={handleGenerateSuggestions}>
-            <Sparkles size={18} /> Smart Suggestions
+          <Button variant="outline" onClick={() => navigate('/logistik/sp')}>
+            Semua SP
           </Button>
-          <Button onClick={() => setIsAddOpen(true)} className="gap-2 min-w-[150px]">
-            <Plus size={18} /> Buat SP Baru
+          <Button onClick={() => setIsAddOpen(true)} className="gap-2">
+            <Plus size={18} /> Buat SP {type}
           </Button>
         </div>
       </div>
 
-      <DataTable 
-        data={items} 
-        columns={columns} 
-        isLoading={isLoading}
-        searchPlaceholder="Cari nomor SP atau supplier..."
-      />
+      <div className="bg-card border rounded-xl overflow-hidden shadow-sm">
+        <DataTable 
+          data={items} 
+          columns={columns} 
+          isLoading={isLoading}
+          searchPlaceholder={`Cari SP ${type}...`}
+        />
+      </div>
 
       {/* Detail SP Dialog */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Detail Surat Pesanan</DialogTitle>
+            <DialogTitle>Detail Surat Pesanan {type}</DialogTitle>
           </DialogHeader>
           {selectedSP && (
             <div className="space-y-6 py-4">
@@ -429,28 +374,18 @@ export default function SuratPesananPage() {
       {/* Add SP Dialog */}
       <Dialog open={isAddOpen} onOpenChange={(open) => {
         setIsAddOpen(open);
-        if (!open) setEditingId(null);
+        if (!open) {
+          setEditingId(null);
+          setNewSP({ supplierId: '', items: [], jenisSP: type || '' });
+        }
       }}>
         <DialogContent className="sm:max-w-[700px]">
-          <DialogHeader><DialogTitle>{editingId ? 'Edit Surat Pesanan' : 'Buat Surat Pesanan Baru'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingId ? `Edit Surat Pesanan ${type}` : `Buat Surat Pesanan ${type} Baru`}</DialogTitle></DialogHeader>
           <div className="space-y-6 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Jenis SP</Label>
-                <Select 
-                  value={newSP.jenisSP} 
-                  onValueChange={(v) => setNewSP({ ...newSP, jenisSP: v })}
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="REGULER" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">REGULER</SelectItem>
-                    {mappings.map(m => (
-                      <SelectItem key={m.id} value={m.jenisSP}>{m.jenisSP}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input value={newSP.jenisSP} readOnly className="bg-muted font-bold text-amber-700" />
               </div>
               <div className="space-y-2">
                 <Label>Pilih Supplier</Label>
@@ -467,16 +402,15 @@ export default function SuratPesananPage() {
             <div className="border rounded-lg p-4 space-y-4 bg-muted/20">
               <div className="grid grid-cols-12 gap-3 items-end">
                 <div className="col-span-6 space-y-2">
-                  <Label>Cari Obat</Label>
+                  <Label>Cari Obat {type}</Label>
                   <SearchableSelect 
                     options={filteredObats.map(o => ({ value: o.id, label: `${o.nama} (${o.satuan})` }))}
                     value={tempItem.obatId}
                     onValueChange={(v) => {
                       setTempItem({...tempItem, obatId: v});
-                      // If quantity is 0, auto-set to 1 to help UX
                       if (tempItem.jumlah === 0) setTempItem(prev => ({ ...prev, obatId: v, jumlah: 1 }));
                     }}
-                    placeholder={newSP.jenisSP ? `Cari Obat ${newSP.jenisSP}` : "Cari Obat Reguler"}
+                    placeholder={`Cari Obat ${type}`}
                     className="h-11 shadow-sm w-full md:min-w-[200px]"
                   />
                   {filteredObats.length === 0 && (
@@ -522,10 +456,7 @@ export default function SuratPesananPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setIsAddOpen(false);
-              setEditingId(null);
-            }}>Batal</Button>
+            <Button variant="outline" onClick={() => setIsAddOpen(false)}>Batal</Button>
             <Button onClick={handleSave} className="gap-2">
               <Send size={16} /> {editingId ? 'Simpan Perubahan' : 'Simpan & Kirim SP'}
             </Button>
